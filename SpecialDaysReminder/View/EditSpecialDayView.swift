@@ -8,8 +8,8 @@
 import SwiftUI
 
 // MARK: - Extracted Form Content for EditSpecialDayView
-// This new private view encapsulates the Form's sections,
-// reducing complexity in the parent EditSpecialDayView.
+// This new private view encapsulates the Form's sections.
+// Reminder settings have been removed from here.
 private struct EditSpecialDayFormContent: View {
     @Binding var specialDay: SpecialDayModel // Receive specialDay as a binding
     let themeColor: Color
@@ -39,6 +39,30 @@ private struct EditSpecialDayFormContent: View {
                     .foregroundColor(.black)
                     .lineLimit(3, reservesSpace: true)
             }
+
+            // REMOVED: Reminder Settings Section
+            // This section will be moved to SettingsView
+            /*
+            Section(header: Text("Reminder Settings").foregroundColor(.black)) {
+                Toggle(isOn: $specialDay.isReminderEnabled) {
+                    Text("Enable Reminder")
+                        .foregroundColor(.black)
+                }
+                .tint(themeColor)
+
+                if specialDay.isReminderEnabled {
+                    Picker("Frequency per Day", selection: $specialDay.reminderFrequency) {
+                        ForEach(1...3, id: \.self) { frequency in
+                            Text("\(frequency) time\(frequency == 1 ? "" : "s")")
+                                .tag(frequency)
+                                .foregroundColor(.black)
+                        }
+                    }
+                    .pickerStyle(.menu)
+                    .foregroundColor(.black)
+                }
+            }
+            */
         }
         .background(themeColor.opacity(0.1)) // Use themeColor for background
         .scrollContentBackground(.hidden) // Hide default list background
@@ -63,7 +87,7 @@ struct EditSpecialDayView: View {
 
     var body: some View {
         NavigationView {
-            // NEW: Use the extracted EditSpecialDayFormContent
+            // Use the extracted EditSpecialDayFormContent
             EditSpecialDayFormContent(specialDay: $specialDay, themeColor: themeColor)
             .navigationTitle("Edit Special Day")
             .navigationBarTitleDisplayMode(.inline)
@@ -89,6 +113,7 @@ struct EditSpecialDayView: View {
 
 struct EditSpecialDayView_Previews: PreviewProvider {
     static var previews: some View {
+        // Preview updated to reflect removal of reminder properties
         EditSpecialDayView(viewModel: SpecialDaysListViewModel(), specialDay: SpecialDayModel(name: "Sample Edit", date: Date(), forWhom: "Preview", category: .friends), themeColor: .blue)
     }
 }

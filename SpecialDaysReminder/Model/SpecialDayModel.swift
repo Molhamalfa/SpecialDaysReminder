@@ -6,7 +6,7 @@
 //
 
 import Foundation
-import SwiftUI // NEW: Import SwiftUI for Color type
+import SwiftUI // Import SwiftUI for Color type
 
 // MARK: - SpecialDayCategory Enum
 // Defines the categories for special days.
@@ -20,14 +20,14 @@ public enum SpecialDayCategory: String, CaseIterable, Codable, Identifiable, Has
     case other = "Other"
 
     // Provides a localized display name for each category.
-    public var displayName: String { // Made public
+    public var displayName: String {
         return self.rawValue
     }
 
     // Conformance to Identifiable protocol
-    public var id: String { self.rawValue } // Made public
+    public var id: String { self.rawValue }
 
-    // NEW: Computed property to provide a Color for each category
+    // Computed property to provide a Color for each category
     public var color: Color {
         switch self {
         case .lovedOnes: return .pink
@@ -35,6 +35,17 @@ public enum SpecialDayCategory: String, CaseIterable, Codable, Identifiable, Has
         case .family: return .green
         case .work: return .orange
         case .other: return .purple
+        }
+    }
+
+    // Icon name for each category
+    public var iconName: String {
+        switch self {
+        case .lovedOnes: return "heart.fill"
+        case .friends: return "person.2.fill"
+        case .family: return "house.fill"
+        case .work: return "briefcase.fill"
+        case .other: return "star.fill"
         }
     }
 }
@@ -63,16 +74,22 @@ public struct SpecialDayModel: Identifiable, Codable, Hashable {
     // Optional notes for the special day.
     public var notes: String?
 
+    // NEW: Reminder properties (These were removed in a later step, but this is the version requested)
+    public var isReminderEnabled: Bool // Whether reminders are active for this event
+    public var reminderFrequency: Int // How many notifications per day (e.g., 1, 2, 3)
+
     // MARK: - Initialization
 
     // Initializes a new SpecialDayModel with a generated UUID.
-    public init(id: UUID = UUID(), name: String, date: Date, forWhom: String, category: SpecialDayCategory, notes: String? = nil) {
+    public init(id: UUID = UUID(), name: String, date: Date, forWhom: String, category: SpecialDayCategory, notes: String? = nil, isReminderEnabled: Bool = false, reminderFrequency: Int = 1) { // UPDATED: Added new parameters with default values
         self.id = id
         self.name = name
         self.date = date
         self.forWhom = forWhom
         self.category = category
         self.notes = notes
+        self.isReminderEnabled = isReminderEnabled // Initialize new property
+        self.reminderFrequency = reminderFrequency // Initialize new property
     }
 
     // MARK: - Computed Properties (Business Logic)
@@ -123,7 +140,7 @@ public struct SpecialDayModel: Identifiable, Codable, Hashable {
     }
 
     // Provides a formatted date string for display.
-    public var formattedDate: String { // NEW COMPUTED PROPERTY
+    public var formattedDate: String {
         let formatter = DateFormatter()
         formatter.dateStyle = .medium // e.g., "Jul 29, 2025"
         formatter.timeStyle = .none

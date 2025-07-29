@@ -86,19 +86,7 @@ struct CategoryCardView: View {
 
 // MARK: - SpecialDayCategory Extension
 // This provides a color and icon for each category.
-extension SpecialDayCategory {
 
-
-    var iconName: String {
-        switch self {
-        case .lovedOnes: return "heart.fill"
-        case .friends: return "person.2.fill"
-        case .family: return "house.fill"
-        case .work: return "briefcase.fill"
-        case .other: return "star.fill"
-        }
-    }
-}
 
 // MARK: - Preview Provider
 struct CategoryCardView_Previews: PreviewProvider {

@@ -65,7 +65,7 @@ private struct CategoryDetailToolbarModifier: ViewModifier {
                     } label: {
                         Image(systemName: "chevron.left.circle.fill")
                             .font(.title2)
-                            .foregroundColor(category?.color ?? SpecialDayCategory.other.color) // CHANGED: Default to .other.color
+                            .foregroundColor(category?.color ?? SpecialDayCategory.other.color)
                     }
                 }
 
@@ -77,7 +77,7 @@ private struct CategoryDetailToolbarModifier: ViewModifier {
                     } label: {
                         Image(systemName: "plus.circle.fill")
                             .font(.title2)
-                            .foregroundColor(category?.color ?? SpecialDayCategory.other.color) // CHANGED: Default to .other.color
+                            .foregroundColor(category?.color ?? SpecialDayCategory.other.color)
                     }
                 }
             }
@@ -89,12 +89,11 @@ private struct CategoryDetailSheetPresenters: ViewModifier {
     @ObservedObject var viewModel: SpecialDaysListViewModel
     @Binding var showingAddSpecialDaySheet: Bool
     @Binding var selectedCategoryForAdd: SpecialDayCategory?
-    let category: SpecialDayCategory? // Needed for AddSpecialDayView themeColor
+    let category: SpecialDayCategory? // Still needed to determine initial category for AddSpecialDayView
 
     func body(content: Content) -> some View {
         content
             .sheet(isPresented: $showingAddSpecialDaySheet) {
-                // CHANGED: Pass themeColor to AddSpecialDayView
                 AddSpecialDayView(viewModel: viewModel, initialCategory: selectedCategoryForAdd)
             }
     }
@@ -102,31 +101,37 @@ private struct CategoryDetailSheetPresenters: ViewModifier {
 
 
 struct CategoryDetailView: View {
-    @ObservedObject var viewModel: SpecialDaysListViewModel
+    // Now holds the main SpecialDaysListViewModel (passed from parent)
+    @ObservedObject var specialDaysListViewModel: SpecialDaysListViewModel
     let category: SpecialDayCategory? // Nil means "All Special Days"
     @Environment(\.dismiss) var dismiss // For custom back button
+
+    // NEW: StateObject for the CategoryDetail-specific ViewModel
+    @StateObject private var categoryDetailViewModel: CategoryDetailViewModel
 
     // State for presenting the AddSpecialDayView sheet
     @State private var showingAddSpecialDaySheet = false
     @State private var selectedCategoryForAdd: SpecialDayCategory?
 
-    // MARK: - Helper Computed Property
-    private var filteredAndSortedDays: [SpecialDayModel] {
-        let days = category == nil ? viewModel.specialDays : viewModel.specialDays(for: category!)
-        return days.sorted { $0.nextOccurrenceDate < $1.nextOccurrenceDate }
+    // MARK: - Initialization
+    // Custom initializer to set up the CategoryDetailViewModel.
+    init(viewModel: SpecialDaysListViewModel, category: SpecialDayCategory?) {
+        _specialDaysListViewModel = ObservedObject(wrappedValue: viewModel)
+        self.category = category
+        // Initialize the StateObject for CategoryDetailViewModel
+        _categoryDetailViewModel = StateObject(wrappedValue: CategoryDetailViewModel(category: category, specialDaysListViewModel: viewModel))
     }
 
     var body: some View {
         VStack {
             CategoryDetailListContent(
-                days: filteredAndSortedDays,
-                themeColor: category?.color ?? SpecialDayCategory.other.color, // CHANGED: Default to .other.color
-                deleteAction: deleteDay
+                days: categoryDetailViewModel.specialDaysForCategory, // Use data from new ViewModel
+                themeColor: category?.color ?? SpecialDayCategory.other.color,
+                deleteAction: categoryDetailViewModel.deleteDay // Use delete action from new ViewModel
             )
 
             Spacer()
         }
-        // CHANGED: Background defaults to .other.color when category is nil
         .background((category?.color ?? SpecialDayCategory.other.color).opacity(0.1).edgesIgnoringSafeArea(.all))
         
         // Apply the extracted toolbar modifier
@@ -141,21 +146,14 @@ struct CategoryDetailView: View {
         
         // Apply the extracted sheet presenters modifier (now only for AddSpecialDayView)
         .modifier(CategoryDetailSheetPresenters(
-            viewModel: viewModel,
+            viewModel: specialDaysListViewModel, // Pass the main ViewModel to the sheet presenter
             showingAddSpecialDaySheet: $showingAddSpecialDaySheet,
             selectedCategoryForAdd: $selectedCategoryForAdd,
             category: category
         ))
     }
-
-    // MARK: - Helper Functions
-
-    private func deleteDay(at offsets: IndexSet) {
-        let daysToDelete = offsets.map { filteredAndSortedDays[$0] }
-        for day in daysToDelete {
-            viewModel.deleteSpecialDay(id: day.id)
-        }
-    }
+    // Removed: filteredAndSortedDays computed property
+    // Removed: deleteDay function
 }
 
 // MARK: - Preview Provider

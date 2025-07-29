@@ -19,63 +19,54 @@ enum NavigationDestinationType: Hashable {
     case editSpecialDay(IdentifiableUUID) // For EditSpecialDayView
 }
 
-// MARK: - Helper ViewModifier for Navigation Destinations
-// This modifier encapsulates the logic for navigation destinations,
-// reducing complexity in the main view's body.
-private struct AppNavigationDestinations: ViewModifier {
+// MARK: - Helper ViewModifier for NavigationStack Content
+// This new modifier encapsulates all content and modifiers within the NavigationStack,
+// significantly simplifying SpecialDaysListView's body.
+private struct SpecialDaysListNavigationContent: ViewModifier {
     @ObservedObject var viewModel: SpecialDaysListViewModel
+    @Binding var navigationPath: NavigationPath
+    @Binding var selectedCategoryForAdd: SpecialDayCategory?
+    @Binding var showingAddSpecialDaySheet: Bool
+
+    // Animation states are passed directly to SpecialDaysContentView
+    let headerOpacity: Double
+    let headerOffset: CGFloat
+    let allDaysCardOpacity: Double
+    let allDaysCardOffset: CGFloat
+    let categoryGridOpacity: Double
+    let categoryGridOffset: CGFloat
 
     func body(content: Content) -> some View {
-        content
+        content // This represents the NavigationStack
+            .navigationTitle("") // Hide default navigation title, but keep navigation bar present
+            .navigationBarTitleDisplayMode(.inline) // Ensure title area is compact
+            .toolbar {
+                ToolbarItem(placement: .navigationBarTrailing) {
+                    // Pass viewModel to SettingsView
+                    NavigationLink(destination: SettingsView(specialDaysListViewModel: viewModel)) {
+                        Image(systemName: "gearshape.fill") // Settings symbol
+                            .font(.title2)
+                            .foregroundColor(.black) // Fixed to black for light mode look
+                    }
+                }
+            }
+            // Sheet for adding a new special day
+            .sheet(isPresented: $showingAddSpecialDaySheet) {
+                AddSpecialDayView(viewModel: viewModel, initialCategory: selectedCategoryForAdd)
+            }
+            // Navigation Destinations for the NavigationStack
             .navigationDestination(for: NavigationDestinationType.self) { destination in
                 switch destination {
                 case .categoryDetail(let category):
                     CategoryDetailView(viewModel: viewModel, category: category)
                 case .editSpecialDay(let identifiableUUID):
                     if let dayToEdit = viewModel.specialDays.first(where: { $0.id == identifiableUUID.id }) {
+                        // FIXED: Pass themeColor to EditSpecialDayView
                         EditSpecialDayView(viewModel: viewModel, specialDay: dayToEdit, themeColor: dayToEdit.category.color)
                     } else {
                         // Handle case where day is not found (e.g., show an alert or go back)
                         Text("Event not found.") // Placeholder for error handling
                     }
-                }
-            }
-    }
-}
-
-// MARK: - Helper ViewModifier for Deep Link Handling
-// This modifier encapsulates onChange logic for deep links.
-private struct SpecialDaysListDeepLinkHandling: ViewModifier { // RENAMED AND SIMPLIFIED
-    @ObservedObject var viewModel: SpecialDaysListViewModel
-    @Binding var navigationPath: NavigationPath
-    @Binding var deepLinkCategory: SpecialDayCategory?
-    @Binding var deepLinkEventID: UUID?
-    @Binding var deepLinkAddEvent: Bool
-    @Binding var showingAddSpecialDaySheet: Bool // Pass this binding to allow direct modification
-
-    func body(content: Content) -> some View {
-        content
-            .onChange(of: deepLinkCategory) { oldValue, newCategory in
-                if let category = newCategory {
-                    navigationPath = NavigationPath()
-                    navigationPath.append(NavigationDestinationType.categoryDetail(category))
-                    deepLinkCategory = nil
-                }
-            }
-            .onChange(of: deepLinkEventID) { oldValue, newEventID in
-                if let eventID = newEventID {
-                    if let day = viewModel.specialDays.first(where: { $0.id == eventID }) {
-                        navigationPath = NavigationPath()
-                        navigationPath.append(NavigationDestinationType.categoryDetail(day.category))
-                        navigationPath.append(NavigationDestinationType.editSpecialDay(IdentifiableUUID(id: day.id)))
-                    }
-                    deepLinkEventID = nil
-                }
-            }
-            .onChange(of: deepLinkAddEvent) { oldValue, newAddEvent in
-                if newAddEvent {
-                    showingAddSpecialDaySheet = true
-                    deepLinkAddEvent = false
                 }
             }
     }
@@ -94,7 +85,6 @@ struct SpecialDaysListView: View {
     @StateObject var viewModel: SpecialDaysListViewModel
 
     // Environment variable to detect current color scheme (light/dark mode)
-    // Keep this for other potential uses, but not for background here.
     @Environment(\.colorScheme) var colorScheme
 
     // @State property to control the presentation of the AddSpecialDayView.
@@ -113,8 +103,7 @@ struct SpecialDaysListView: View {
     // NEW: Binding to trigger showing the AddSpecialDaySheet from a deep link
     @Binding var deepLinkAddEvent: Bool // ADD THIS LINE
 
-
-    // Animation states for initial load - Kept as @State in the main view
+    // Animation states for initial load
     @State private var headerOpacity: Double = 0
     @State private var headerOffset: CGFloat = -20
     @State private var allDaysCardOpacity: Double = 0
@@ -132,7 +121,7 @@ struct SpecialDaysListView: View {
         _selectedCategoryForAdd = State(initialValue: nil)
         _deepLinkCategory = deepLinkCategory
         _deepLinkEventID = deepLinkEventID
-        _deepLinkAddEvent = deepLinkAddEvent
+        _deepLinkAddEvent = deepLinkAddEvent // INITIALIZE NEW BINDING
     }
 
 
@@ -143,7 +132,7 @@ struct SpecialDaysListView: View {
         // while the NavigationStack content respects safe areas.
         ZStack {
             // Background color that fills the entire screen
-            Color(white: 0.9) // Fixed to a clearer light gray background
+            Color.white // Always use white background for light mode look
                 .edgesIgnoringSafeArea(.all)
 
             NavigationStack(path: $navigationPath) {
@@ -159,27 +148,21 @@ struct SpecialDaysListView: View {
                     showingAddSpecialDaySheet: $showingAddSpecialDaySheet,
                     navigationPath: $navigationPath // Pass navigationPath
                 )
-                .navigationTitle("") // Hide default navigation title, but keep navigation bar present
-                .navigationBarTitleDisplayMode(.inline) // Ensure title area is compact
-                .toolbar {
-                    ToolbarItem(placement: .navigationBarTrailing) {
-                        // Changed from Button to NavigationLink for normal view presentation
-                        NavigationLink(destination: SettingsView()) {
-                            Image(systemName: "gearshape.fill") // Settings symbol
-                                .font(.title2)
-                                .foregroundColor(.black) // Fixed to black for light mode look
-                        }
-                    }
-                }
-                // Sheet for adding a new special day
-                .sheet(isPresented: $showingAddSpecialDaySheet) {
-                    AddSpecialDayView(viewModel: viewModel, initialCategory: selectedCategoryForAdd)
-                }
-                // Apply the extracted navigation destinations modifier
-                .modifier(AppNavigationDestinations(viewModel: viewModel))
+                // NEW: Apply the extracted NavigationStack content modifier
+                .modifier(SpecialDaysListNavigationContent(
+                    viewModel: viewModel,
+                    navigationPath: $navigationPath,
+                    selectedCategoryForAdd: $selectedCategoryForAdd,
+                    showingAddSpecialDaySheet: $showingAddSpecialDaySheet,
+                    headerOpacity: headerOpacity, // Pass animation states
+                    headerOffset: headerOffset,
+                    allDaysCardOpacity: allDaysCardOpacity,
+                    allDaysCardOffset: allDaysCardOffset,
+                    categoryGridOpacity: categoryGridOpacity,
+                    categoryGridOffset: categoryGridOffset
+                ))
             }
         }
-        // Moved onAppear animation logic back to the main view
         .onAppear {
             // Staggered initial appearance animation
             withAnimation(.easeOut(duration: 0.5).delay(0.1)) {
@@ -195,15 +178,33 @@ struct SpecialDaysListView: View {
                 categoryGridOffset = 0
             }
         }
-        // Apply the simplified deep link handling modifier
-        .modifier(SpecialDaysListDeepLinkHandling(
-            viewModel: viewModel,
-            navigationPath: $navigationPath,
-            deepLinkCategory: $deepLinkCategory,
-            deepLinkEventID: $deepLinkEventID,
-            deepLinkAddEvent: $deepLinkAddEvent,
-            showingAddSpecialDaySheet: $showingAddSpecialDaySheet // Pass the binding
-        ))
+        // Updated onChange syntax for iOS 17+ for deepLinkCategory
+        .onChange(of: deepLinkCategory) { oldValue, newCategory in
+            if let category = newCategory {
+                // Clear existing path and push the category detail
+                navigationPath = NavigationPath() // Clear path to ensure it's the root
+                navigationPath.append(NavigationDestinationType.categoryDetail(category))
+                deepLinkCategory = nil // Consume the deep link
+            }
+        }
+        // NEW: onChange for deepLinkEventID to navigate to category detail AND then edit view
+        .onChange(of: deepLinkEventID) { oldValue, newEventID in
+            if let eventID = newEventID {
+                if let day = viewModel.specialDays.first(where: { $0.id == eventID }) {
+                    navigationPath = NavigationPath() // Clear path
+                    navigationPath.append(NavigationDestinationType.categoryDetail(day.category)) // Push category detail
+                    navigationPath.append(NavigationDestinationType.editSpecialDay(IdentifiableUUID(id: day.id))) // Then push edit view
+                }
+                deepLinkEventID = nil // Consume the deep link
+            }
+        }
+        // NEW: onChange for deepLinkAddEvent to show the AddSpecialDaySheet
+        .onChange(of: deepLinkAddEvent) { oldValue, newAddEvent in
+            if newAddEvent {
+                showingAddSpecialDaySheet = true
+                deepLinkAddEvent = false // Consume the deep link
+            }
+        }
     }
 }
 
@@ -211,7 +212,7 @@ struct SpecialDaysListView: View {
 // Provides a preview of the SpecialDaysListView in Xcode's canvas.
 struct SpecialDaysListView_Previews: PreviewProvider {
     static var previews: some View {
-        // Provide a constant binding for preview
+        // Provide constant bindings for preview
         SpecialDaysListView(deepLinkCategory: .constant(nil), deepLinkEventID: .constant(nil), deepLinkAddEvent: .constant(false))
     }
 }
