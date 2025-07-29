@@ -7,133 +7,88 @@
 
 import SwiftUI
 
-// MARK: - EditSpecialDayView
-// A view for editing an existing special day.
-// This will be presented as a sheet from SpecialDaysListView.
-struct EditSpecialDayView: View {
-    @Environment(\.dismiss) var dismiss // Environment value to dismiss the sheet.
-    @ObservedObject var viewModel: SpecialDaysListViewModel // ViewModel to update the day.
+// MARK: - Extracted Form Content for EditSpecialDayView
+// This new private view encapsulates the Form's sections,
+// reducing complexity in the parent EditSpecialDayView.
+private struct EditSpecialDayFormContent: View {
+    @Binding var specialDay: SpecialDayModel // Receive specialDay as a binding
+    let themeColor: Color
 
-    // @State properties to hold the input values for the special day being edited.
-    // Initialize them with the values from the passed-in specialDay.
-    @State private var name: String
-    @State private var date: Date
-    @State private var forWhom: String
-    @State private var category: SpecialDayCategory
-    @State private var notes: String
-
-    // The original special day model passed from the list view.
-    let originalSpecialDay: SpecialDayModel
-
-    // Custom initializer to set initial @State values from the SpecialDayModel.
-    init(viewModel: SpecialDaysListViewModel, specialDay: SpecialDayModel) {
-        self.viewModel = viewModel
-        self.originalSpecialDay = specialDay
-        _name = State(initialValue: specialDay.name)
-        _date = State(initialValue: specialDay.date)
-        _forWhom = State(initialValue: specialDay.forWhom)
-        _category = State(initialValue: specialDay.category) // Category is fixed for edit view
-        _notes = State(initialValue: specialDay.notes ?? "")
-    }
-
-    // Helper function to get a color based on category
-    private func color(for category: SpecialDayCategory) -> Color {
-        switch category {
-        case .lovedOnes: return .pink
-        case .friends: return .blue
-        case .family: return .green
-        case .work: return .orange
-        case .other: return .purple
+    var body: some View {
+        Form {
+            Section(header: Text("Event Details").foregroundColor(.black)) {
+                TextField("Event Name", text: $specialDay.name)
+                    .foregroundColor(.black)
+                
+                DatePicker("Date", selection: $specialDay.date, displayedComponents: .date)
+                    .foregroundColor(.black)
+                
+                TextField("For Whom", text: $specialDay.forWhom)
+                    .foregroundColor(.black)
+                
+                Picker("Category", selection: $specialDay.category) {
+                    ForEach(SpecialDayCategory.allCases, id: \.self) { cat in
+                        Text(cat.displayName).tag(cat)
+                            .foregroundColor(.black)
+                    }
+                }
+                .pickerStyle(.menu)
+                .foregroundColor(.black)
+                
+                TextField("Notes (Optional)", text: Binding(get: { specialDay.notes ?? "" }, set: { specialDay.notes = $0.isEmpty ? nil : $0 }), axis: .vertical)
+                    .foregroundColor(.black)
+                    .lineLimit(3, reservesSpace: true)
+            }
         }
+        .background(themeColor.opacity(0.1)) // Use themeColor for background
+        .scrollContentBackground(.hidden) // Hide default list background
     }
+}
 
-    // Computed property for the background color of the view
-    private var backgroundColor: Color {
-        // Always return the category's color, regardless of system dark/light mode
-        color(for: category)
+
+struct EditSpecialDayView: View {
+    @ObservedObject var viewModel: SpecialDaysListViewModel
+    @Environment(\.dismiss) var dismiss
+    
+    // Special day to be edited
+    @State private var specialDay: SpecialDayModel // Use @State for mutable copy
+    let themeColor: Color // Property to accept the theme color
+
+    // Initializer to receive the immutable specialDay and create a mutable copy
+    init(viewModel: SpecialDaysListViewModel, specialDay: SpecialDayModel, themeColor: Color) {
+        _viewModel = ObservedObject(wrappedValue: viewModel)
+        _specialDay = State(initialValue: specialDay) // Initialize @State with the passed model
+        self.themeColor = themeColor // Initialize themeColor
     }
 
     var body: some View {
-        // Apply background to the entire NavigationView and ignore safe areas
         NavigationView {
-            Form {
-                Section("Event Details") {
-                    TextField("Event Name (e.g., Birthday)", text: $name)
-                        .listRowBackground(Color.white.opacity(0.1)) // Subtle background for form rows
-                        .foregroundColor(.white) // White text for input
-                    TextField("For Whom (e.g., Mom)", text: $forWhom)
-                        .autocorrectionDisabled()
-                        .textInputAutocapitalization(.words)
-                        .listRowBackground(Color.white.opacity(0.1))
-                        .foregroundColor(.white)
-                    DatePicker("Date", selection: $date, displayedComponents: .date)
-                        .listRowBackground(Color.white.opacity(0.1))
-                        .datePickerStyle(.graphical) // Modern date picker style
-                        .foregroundColor(.white) // Date picker label color
-                        .colorMultiply(.white) // To ensure date components are visible
-                        .tint(.white) // Apply tint for interactive elements (e.g., selected date circle)
-
-                    // Display fixed category, not a picker
-                    HStack {
-                        Text("Category")
-                            .foregroundColor(.white)
-                        Spacer()
-                        Text(category.displayName)
-                            .foregroundColor(.white.opacity(0.7))
-                    }
-                    .listRowBackground(Color.white.opacity(0.1))
-
-                    // Ensure TextEditor's own background is clear, rely on listRowBackground for the row
-                    TextEditor(text: $notes)
-                        .frame(minHeight: 100, maxHeight: 150) // Set a reasonable height range
-                        .background(Color.clear) // Ensure TextEditor's own background is clear
-                        .foregroundColor(.white) // Text color inside editor
-                        .tint(.white) // Cursor color
-                        .cornerRadius(10) // Match form row styling
-                        .scrollContentBackground(.hidden) // Hide default TextEditor background
-                        .listRowBackground(Color.white.opacity(0.1)) // Apply row background to the TextEditor itself
-                }
-            }
-            .background(backgroundColor) // Apply category color to the form background
-            .scrollContentBackground(.hidden) // Hide default form background to show custom color
+            // NEW: Use the extracted EditSpecialDayFormContent
+            EditSpecialDayFormContent(specialDay: $specialDay, themeColor: themeColor)
             .navigationTitle("Edit Special Day")
             .navigationBarTitleDisplayMode(.inline)
+            .navigationBarBackButtonHidden(true)
             .toolbar {
                 ToolbarItem(placement: .navigationBarLeading) {
                     Button("Cancel") {
                         dismiss()
                     }
-                    .foregroundColor(.white) // White color for cancel button
+                    .foregroundColor(themeColor)
                 }
                 ToolbarItem(placement: .navigationBarTrailing) {
                     Button("Save") {
-                        // Create an updated SpecialDayModel with the same ID as the original.
-                        let updatedDay = SpecialDayModel(
-                            id: originalSpecialDay.id, // Keep the original ID
-                            name: name,
-                            date: date,
-                            forWhom: forWhom,
-                            category: category, // Category is fixed based on original event
-                            notes: notes.isEmpty ? nil : notes
-                        )
-                        viewModel.updateSpecialDay(updatedDay) // Update via the ViewModel.
+                        viewModel.updateSpecialDay(specialDay) // Update the original in ViewModel
                         dismiss()
                     }
-                    .disabled(name.isEmpty || forWhom.isEmpty)
-                    .font(.headline) // Make save button slightly bolder
-                    .foregroundColor(.white) // White color for save button
+                    .foregroundColor(themeColor)
                 }
             }
         }
-        .background(backgroundColor) // Apply background to the entire NavigationView and ignore safe areas
-        .ignoresSafeArea()
-        .accentColor(.white) // Ensures toolbar button icons are white
     }
 }
 
-// MARK: - Preview Provider
 struct EditSpecialDayView_Previews: PreviewProvider {
     static var previews: some View {
-        EditSpecialDayView(viewModel: SpecialDaysListViewModel(), specialDay: SpecialDayModel(name: "Sample Birthday", date: Date(), forWhom: "Someone", category: .lovedOnes, notes: "Test notes for preview"))
+        EditSpecialDayView(viewModel: SpecialDaysListViewModel(), specialDay: SpecialDayModel(name: "Sample Edit", date: Date(), forWhom: "Preview", category: .friends), themeColor: .blue)
     }
 }

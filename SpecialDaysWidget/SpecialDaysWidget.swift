@@ -21,6 +21,7 @@ struct SpecialDaysWidgetEntry: TimelineEntry {
     var deepLinkURL: URL? {
         if let day = specialDay {
             // Construct a URL that includes the event's UUID
+            // This URL will now point to the category detail view, which then handles showing the specific event.
             return URL(string: "specialdaysreminder://event?id=\(day.id.uuidString)")
         }
         return nil
@@ -32,7 +33,7 @@ struct SpecialDaysWidgetEntry: TimelineEntry {
 // It determines when and with what data the widget should update.
 struct SpecialDaysTimelineProvider: TimelineProvider {
     // IMPORTANT: Ensure this matches the App Group ID in your SpecialDaysListViewModel
-    private let appGroupIdentifier = "group.com.molham.SpecialDaysReminder"
+    private let appGroupIdentifier = "group.com.molham.SpecialDaysReminder" // Make sure this matches your unique App Group ID
 
     // Helper to get shared UserDefaults
     private var sharedUserDefaults: UserDefaults? {
@@ -116,17 +117,37 @@ struct SpecialDaysWidgetView: View {
     @Environment(\.widgetFamily) var family // To adapt UI for different widget sizes
 
     var body: some View {
-        ZStack {
-            // Background based on widget family or a default
-            LinearGradient(
-                gradient: Gradient(colors: [Color.purple.opacity(0.8), Color.blue.opacity(0.8)]),
-                startPoint: .topLeading,
-                endPoint: .bottomTrailing
-            )
-            .edgesIgnoringSafeArea(.all) // Ensure gradient fills the entire widget area
+        VStack(alignment: .leading, spacing: 4) {
+            if let day = entry.specialDay {
+                if family == .systemSmall {
+                    // Layout for small widget
+                    Text(day.name) // Event Name
+                        .font(.headline)
+                        .fontWeight(.bold)
+                        .foregroundColor(.white)
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.7)
 
-            VStack(alignment: .leading, spacing: 4) {
-                if let day = entry.specialDay {
+                    Text("For: \(day.forWhom)") // For Whom
+                        .font(.subheadline)
+                        .foregroundColor(.white.opacity(0.8))
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.7)
+
+                    Spacer() // Pushes content to top
+
+                    Text(day.daysUntilDescription) // Days Until
+                        .font(.title2)
+                        .fontWeight(.heavy)
+                        .foregroundColor(.white)
+                        .padding(.vertical, 2)
+                        .padding(.horizontal, 8)
+                        .background(Color.white.opacity(0.2))
+                        .cornerRadius(5)
+                        .minimumScaleFactor(0.7) // Allow text to shrink
+
+                } else {
+                    // Existing layout for medium and large widgets
                     // Event Name
                     Text(day.name)
                         .font(.headline)
@@ -164,7 +185,7 @@ struct SpecialDaysWidgetView: View {
                     .padding(.top, 4)
 
                     // Show notes indicator for medium/large widgets
-                    if family != .systemSmall && (day.notes != nil && !day.notes!.isEmpty) {
+                    if (day.notes != nil && !day.notes!.isEmpty) {
                         HStack {
                             Image(systemName: "note.text")
                                 .font(.caption)
@@ -176,29 +197,33 @@ struct SpecialDaysWidgetView: View {
                         }
                         .padding(.top, 2)
                     }
-
-                } else {
-                    // No upcoming events message
-                    VStack(alignment: .center) {
-                        Spacer()
-                        Image(systemName: "calendar.badge.plus")
-                            .font(.largeTitle)
-                            .foregroundColor(.white.opacity(0.7))
-                            .padding(.bottom, 5)
-                        Text("No Upcoming Special Days")
-                            .font(.headline)
-                            .foregroundColor(.white)
-                            .multilineTextAlignment(.center)
-                        Text("Add new events in the app!")
-                            .font(.caption)
-                            .foregroundColor(.white.opacity(0.8))
-                            .multilineTextAlignment(.center)
-                        Spacer()
-                    }
-                    .frame(maxWidth: .infinity, maxHeight: .infinity)
                 }
+            } else {
+                // No upcoming events message (common for all sizes)
+                VStack(alignment: .center) {
+                    Spacer()
+                    Image(systemName: "calendar.badge.plus")
+                        .font(.largeTitle)
+                        .foregroundColor(.white.opacity(0.7))
+                        .padding(.bottom, 5)
+                    Text("No Upcoming Special Days")
+                        .font(.headline)
+                        .foregroundColor(.white)
+                        .multilineTextAlignment(.center)
+                    Text("Add new events in the app!")
+                        .font(.caption)
+                        .foregroundColor(.white.opacity(0.8))
+                        .multilineTextAlignment(.center)
+                    Spacer()
+                }
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
             }
-            .padding() // Add padding around the content
+        }
+        .padding() // Add padding around the content
+        .containerBackground(for: .widget) {
+            // CHANGED: Widget background now matches the event's category color
+            // If no event, use a default light gray background
+            (entry.specialDay?.category.color ?? Color.gray).opacity(0.8)
         }
         // Make the entire widget tappable for deep linking
         .widgetURL(entry.deepLinkURL)
@@ -207,7 +232,6 @@ struct SpecialDaysWidgetView: View {
 
 // MARK: - Widget Bundle
 // The main entry point for the widget extension.
-// This is the essential declaration for your widget extension to function.
 @main
 struct SpecialDaysWidgetBundle: WidgetBundle {
     var body: some Widget {

@@ -7,125 +7,95 @@
 
 import SwiftUI
 
-// MARK: - CategoryCardView
-// A custom view that displays a category of special days as a colorful card.
 struct CategoryCardView: View {
     let category: SpecialDayCategory
     let specialDays: [SpecialDayModel]
-    let onAddTapped: (SpecialDayCategory) -> Void // Closure to handle adding a new day for this category
-    let onDayTapped: (SpecialDayModel) -> Void // Closure to handle tapping on an existing day
-    let onCardTapped: (SpecialDayCategory) -> Void // New closure to handle tapping the card itself
+    let onAddTapped: (SpecialDayCategory) -> Void
+    let onDayTapped: (SpecialDayModel) -> Void
 
-    // Optional properties for custom title and icon
+    // Custom properties for "All Special Days" card
     var customTitle: String?
     var customIcon: String?
 
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
-            // Card Title and Icon - now uses customTitle/customIcon if provided
             HStack {
-                Image(systemName: customIcon ?? icon(for: category))
+                Image(systemName: customIcon ?? category.iconName)
                     .font(.title2)
                     .foregroundColor(.white)
-                // Removed Text(customTitle ?? category.displayName)
-                Spacer()
-                // Display count of special days in this category
-                Text("\(specialDays.count)")
+                Text(customTitle ?? category.displayName)
                     .font(.headline)
                     .fontWeight(.bold)
-                    .foregroundColor(.white.opacity(0.8))
-                    .padding(.horizontal, 8)
-                    .padding(.vertical, 4)
-                    .background(Capsule().fill(Color.white.opacity(0.2)))
+                    .foregroundColor(.white)
+                Spacer()
+                Button(action: {
+                    onAddTapped(category)
+                }) {
+                    Image(systemName: "plus.circle.fill")
+                        .font(.title2)
+                        .foregroundColor(.white)
+                        .padding(5)
+                        .background(Color.white.opacity(0.2))
+                        .clipShape(Circle())
+                }
             }
             .padding(.bottom, 5)
 
-            // List of Special Days (limited to a few for glanceability)
             if specialDays.isEmpty {
-                Spacer()
-                Text("No special days yet. Tap '+' to add one!")
-                    .font(.caption)
-                    .foregroundColor(.white.opacity(0.7))
-                    .frame(maxWidth: .infinity, alignment: .center)
-                Spacer()
+                Spacer() // Pushes content to top
+                Text("No special days yet.")
+                    .font(.subheadline)
+                    .foregroundColor(.white.opacity(0.8))
+                    .padding(.vertical, 10)
+                Spacer() // Pushes content to bottom
             } else {
-                ForEach(specialDays.prefix(3)) { day in // Show top 3 upcoming days
-                    HStack {
-                        Text(day.name)
-                            .font(.subheadline)
-                            .fontWeight(.medium)
-                            .foregroundColor(.white)
-                        Spacer()
-                        Text(day.daysUntilDescription)
+                VStack(alignment: .leading, spacing: 5) {
+                    ForEach(specialDays.prefix(2)) { day in
+                        HStack {
+                            Text(day.name)
+                                .font(.subheadline)
+                                .lineLimit(1)
+                                .foregroundColor(.white)
+                            Spacer()
+                            Text(day.daysUntilDescription)
+                                .font(.caption)
+                                .foregroundColor(.white.opacity(0.8))
+                        }
+                        .contentShape(Rectangle())
+                        .onTapGesture {
+                            onDayTapped(day)
+                        }
+                    }
+                    if specialDays.count > 2 {
+                        Text("+\(specialDays.count - 2) more...")
                             .font(.caption)
-                            .fontWeight(.bold)
-                            .foregroundColor(day.daysUntil == 0 ? .red : .white.opacity(0.9))
-                    }
-                    .padding(.vertical, 2)
-                    .onTapGesture {
-                        onDayTapped(day) // Call the closure when a day is tapped
+                            .foregroundColor(.white.opacity(0.8))
+                            .padding(.top, 5)
                     }
                 }
-                if specialDays.count > 3 {
-                    Text("+\(specialDays.count - 3) more...")
-                        .font(.caption2)
-                        .foregroundColor(.white.opacity(0.7))
-                        .padding(.top, 2)
-                }
-            }
-
-            Spacer() // Pushes content up
-
-            // Plus Button at the bottom center
-            HStack {
-                Spacer()
-                Button {
-                    onAddTapped(category) // Call the closure to add a new day
-                } label: {
-                    Image(systemName: "plus.circle.fill")
-                        .font(.title)
-                        .foregroundColor(.white)
-                        .padding(5)
-                        .background(Circle().fill(Color.white.opacity(0.2)))
-                }
-                Spacer()
+                Spacer() // Ensures content is pushed to the top within the fixed frame
             }
         }
         .padding()
-        .frame(maxWidth: .infinity)
-        .background(
-            LinearGradient(gradient: Gradient(colors: [color(for: category).opacity(0.9), color(for: category)]), startPoint: .topLeading, endPoint: .bottomTrailing)
-        )
-        .cornerRadius(20)
-        .shadow(color: Color.black.opacity(0.1), radius: 10, x: 0, y: 5)
-        .contentShape(Rectangle()) // Make the entire card tappable
-        .onTapGesture {
-            // Only trigger onCardTapped if the tap wasn't consumed by the button
-            // SwiftUI's tap gesture precedence usually handles this, but explicit
-            // action ensures the button's action takes priority.
-            onCardTapped(category)
-        }
+        .background(category.color)
+        .cornerRadius(15)
+        .shadow(color: Color.black.opacity(0.1), radius: 5, x: 0, y: 2)
+        .frame(minHeight: 170, maxHeight: 170) // CHANGED: Increased fixed height for better consistency
     }
+}
 
-    // Helper function to get SF Symbol name based on category
-    private func icon(for category: SpecialDayCategory) -> String {
-        switch category {
+// MARK: - SpecialDayCategory Extension
+// This provides a color and icon for each category.
+extension SpecialDayCategory {
+
+
+    var iconName: String {
+        switch self {
         case .lovedOnes: return "heart.fill"
         case .friends: return "person.2.fill"
         case .family: return "house.fill"
         case .work: return "briefcase.fill"
         case .other: return "star.fill"
-        }
-    }
-
-    // Helper function to get a color based on category
-    private func color(for category: SpecialDayCategory) -> Color {
-        switch category {
-        case .lovedOnes: return .pink
-        case .friends: return .blue
-        case .family: return .green
-        case .work: return .orange
-        case .other: return .purple
         }
     }
 }
@@ -138,41 +108,40 @@ struct CategoryCardView_Previews: PreviewProvider {
                 category: .lovedOnes,
                 specialDays: [
                     SpecialDayModel(name: "Mom's Birthday", date: Date(), forWhom: "Mom", category: .lovedOnes),
-                    SpecialDayModel(name: "Anniversary", date: Calendar.current.date(byAdding: .day, value: 10, to: Date())!, forWhom: "Spouse", category: .lovedOnes)
+                    SpecialDayModel(name: "Anniversary", date: Date().addingTimeInterval(86400 * 30), forWhom: "Partner", category: .lovedOnes),
+                    SpecialDayModel(name: "Event 3", date: Date().addingTimeInterval(86400 * 60), forWhom: "Another", category: .lovedOnes)
                 ],
                 onAddTapped: { _ in },
-                onDayTapped: { _ in },
-                onCardTapped: { _ in } // Added for preview
+                onDayTapped: { _ in }
             )
-            .previewLayout(.sizeThatFits)
-            .padding()
+            .previewDisplayName("Loved Ones Card (Full)")
 
             CategoryCardView(
-                category: .friends,
+                category: .other,
                 specialDays: [],
                 onAddTapped: { _ in },
                 onDayTapped: { _ in },
-                onCardTapped: { _ in } // Added for preview
-            )
-            .previewLayout(.sizeThatFits)
-            .padding()
-
-            // Preview for the new "All Special Days" card
-            CategoryCardView(
-                category: .other, // Base category for color
-                specialDays: [
-                    SpecialDayModel(name: "Mom's Bday", date: Date(), forWhom: "Mom", category: .lovedOnes),
-                    SpecialDayModel(name: "Project Due", date: Date(), forWhom: "Work", category: .work),
-                    SpecialDayModel(name: "Friend's Meet", date: Date(), forWhom: "John", category: .friends)
-                ],
-                onAddTapped: { _ in },
-                onDayTapped: { _ in },
-                onCardTapped: { _ in },
                 customTitle: "All Special Days",
                 customIcon: "calendar"
             )
-            .previewLayout(.sizeThatFits)
-            .padding()
+            .previewDisplayName("All Days Empty Card")
+
+            CategoryCardView(
+                category: .work,
+                specialDays: [
+                    SpecialDayModel(name: "Work Party", date: Date().addingTimeInterval(86400 * 10), forWhom: "Team", category: .work),
+                    SpecialDayModel(name: "Project Deadline", date: Date().addingTimeInterval(86400 * 20), forWhom: "Client", category: .work),
+                    SpecialDayModel(name: "Review", date: Date().addingTimeInterval(86400 * 40), forWhom: "Boss", category: .work),
+                    SpecialDayModel(name: "Team Lunch", date: Date().addingTimeInterval(86400 * 50), forWhom: "Colleagues", category: .work)
+                ],
+                onAddTapped: { _ in },
+                onDayTapped: { _ in },
+                customTitle: "Work Events",
+                customIcon: "briefcase.fill"
+            )
+            .previewDisplayName("Work Card (More than 2)")
         }
+        .padding()
+        .previewLayout(.sizeThatFits)
     }
 }

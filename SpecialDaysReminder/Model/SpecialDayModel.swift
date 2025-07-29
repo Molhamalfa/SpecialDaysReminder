@@ -6,12 +6,13 @@
 //
 
 import Foundation
+import SwiftUI // NEW: Import SwiftUI for Color type
 
 // MARK: - SpecialDayCategory Enum
 // Defines the categories for special days.
 // This helps in organizing events and filtering them for display.
 // Conforms to Identifiable for SwiftUI lists, Codable for persistence.
-public enum SpecialDayCategory: String, CaseIterable, Codable, Identifiable { // Made public for potential cross-module access
+public enum SpecialDayCategory: String, CaseIterable, Codable, Identifiable, Hashable {
     case lovedOnes = "Loved Ones"
     case friends = "Friends"
     case family = "Family"
@@ -25,13 +26,24 @@ public enum SpecialDayCategory: String, CaseIterable, Codable, Identifiable { //
 
     // Conformance to Identifiable protocol
     public var id: String { self.rawValue } // Made public
+
+    // NEW: Computed property to provide a Color for each category
+    public var color: Color {
+        switch self {
+        case .lovedOnes: return .pink
+        case .friends: return .blue
+        case .family: return .green
+        case .work: return .orange
+        case .other: return .purple
+        }
+    }
 }
 
 // MARK: - SpecialDayModel
 // Represents a single special day event.
 // Conforms to Identifiable for SwiftUI lists, Codable for persistence,
 // and Hashable for unique identification if needed in sets/dictionaries.
-public struct SpecialDayModel: Identifiable, Codable, Hashable { // Made public
+public struct SpecialDayModel: Identifiable, Codable, Hashable {
     // Unique identifier for each special day.
     // UUID is used to ensure global uniqueness.
     public let id: UUID
@@ -42,17 +54,18 @@ public struct SpecialDayModel: Identifiable, Codable, Hashable { // Made public
     // The date of the special day.
     public var date: Date
 
-    // The person or entity associated with the special day (e.g., "Mom", "John Doe").
+    // The person or entity associated with the event.
     public var forWhom: String
 
-    // The category this special day belongs to.
+    // The category of the special day (e.g., Loved Ones, Work).
     public var category: SpecialDayCategory
 
     // Optional notes for the special day.
     public var notes: String?
 
-    // Initializes a new SpecialDayModel instance.
-    // A default UUID is generated if not provided.
+    // MARK: - Initialization
+
+    // Initializes a new SpecialDayModel with a generated UUID.
     public init(id: UUID = UUID(), name: String, date: Date, forWhom: String, category: SpecialDayCategory, notes: String? = nil) {
         self.id = id
         self.name = name
@@ -62,16 +75,10 @@ public struct SpecialDayModel: Identifiable, Codable, Hashable { // Made public
         self.notes = notes
     }
 
-    // MARK: - Helper Properties (Computed)
+    // MARK: - Computed Properties (Business Logic)
 
-    // Formats the date for display.
-    public var formattedDate: String {
-        let formatter = DateFormatter()
-        formatter.dateStyle = .long // e.g., "July 27, 2025"
-        return formatter.string(from: date)
-    }
-
-    // Computed property to get the actual Date object for the next upcoming occurrence.
+    // Calculates the next upcoming occurrence date of the special day.
+    // This handles events that recur yearly (like birthdays, anniversaries).
     public var nextOccurrenceDate: Date {
         let calendar = Calendar.current
         let now = Date()
@@ -114,5 +121,12 @@ public struct SpecialDayModel: Identifiable, Codable, Hashable { // Made public
             return "\(days) days"
         }
     }
-}
 
+    // Provides a formatted date string for display.
+    public var formattedDate: String { // NEW COMPUTED PROPERTY
+        let formatter = DateFormatter()
+        formatter.dateStyle = .medium // e.g., "Jul 29, 2025"
+        formatter.timeStyle = .none
+        return formatter.string(from: date)
+    }
+}

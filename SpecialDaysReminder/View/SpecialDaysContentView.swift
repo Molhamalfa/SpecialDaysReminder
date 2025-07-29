@@ -18,11 +18,10 @@ struct SpecialDaysContentView: View {
     let categoryGridOpacity: Double
     let categoryGridOffset: CGFloat
 
-    // Bindings for sheets (passed from parent)
-    @Binding var selectedDayToEdit: SpecialDayModel?
-    @Binding var showingAddSpecialDaySheet: Bool
+    // Bindings for sheets and navigation (passed from parent)
     @Binding var selectedCategoryForAdd: SpecialDayCategory?
-    @Binding var showingEditSpecialDaySheet: Bool // ADD THIS LINE
+    @Binding var showingAddSpecialDaySheet: Bool
+    @Binding var navigationPath: NavigationPath
 
     var body: some View {
         ScrollView(.vertical, showsIndicators: false) {
@@ -32,29 +31,25 @@ struct SpecialDaysContentView: View {
                     .offset(y: headerOffset)
                     .padding(.top, 20)
 
-                AllSpecialDaysCardLinkView(
+                // NEW: Use the extracted AllSpecialDaysCardView
+                AllSpecialDaysCardView(
                     viewModel: viewModel,
                     allDaysCardOpacity: allDaysCardOpacity,
                     allDaysCardOffset: allDaysCardOffset,
-                    selectedDayToEdit: $selectedDayToEdit,
-                    showingEditSpecialDaySheet: $showingEditSpecialDaySheet // CORRECTED BINDING
+                    navigationPath: $navigationPath,
+                    selectedCategoryForAdd: $selectedCategoryForAdd,
+                    showingAddSpecialDaySheet: $showingAddSpecialDaySheet
                 )
 
-                LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 15) {
-                    ForEach(SpecialDayCategory.allCases.filter { $0 != .other }, id: \.self) { category in
-                        CategoryGridItemLinkView(
-                            viewModel: viewModel,
-                            category: category,
-                            selectedCategoryForAdd: $selectedCategoryForAdd,
-                            showingAddSpecialDaySheet: $showingAddSpecialDaySheet,
-                            selectedDayToEdit: $selectedDayToEdit,
-                            showingEditSpecialDaySheet: $showingEditSpecialDaySheet // CORRECTED BINDING
-                        )
-                    }
-                }
-                .opacity(categoryGridOpacity)
-                .offset(y: categoryGridOffset)
-                .padding(.horizontal)
+                // NEW: Use the extracted CategoryGridSectionView
+                CategoryGridSectionView(
+                    viewModel: viewModel,
+                    categoryGridOpacity: categoryGridOpacity,
+                    categoryGridOffset: categoryGridOffset,
+                    selectedCategoryForAdd: $selectedCategoryForAdd,
+                    showingAddSpecialDaySheet: $showingAddSpecialDaySheet,
+                    navigationPath: $navigationPath
+                )
             }
             .padding(.bottom, 50)
         }
@@ -72,10 +67,9 @@ struct SpecialDaysContentView_Previews: PreviewProvider {
             allDaysCardOffset: 0,
             categoryGridOpacity: 1.0,
             categoryGridOffset: 0,
-            selectedDayToEdit: .constant(nil),
-            showingAddSpecialDaySheet: .constant(false),
             selectedCategoryForAdd: .constant(nil),
-            showingEditSpecialDaySheet: .constant(false) // ADD TO PREVIEW
+            showingAddSpecialDaySheet: .constant(false),
+            navigationPath: .constant(NavigationPath())
         )
     }
 }
