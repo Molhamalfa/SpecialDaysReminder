@@ -54,7 +54,7 @@ struct AddSpecialDayView: View {
                         .lineLimit(3, reservesSpace: true)
                 }
             }
-            .background(Color.white) // UPDATED: Fixed background to white
+            .background(Color.gray.opacity(0.3)) // UPDATED: Fixed background to white
             .scrollContentBackground(.hidden) // Hide default list background
             .navigationTitle("Add Special Day")
             .navigationBarTitleDisplayMode(.inline)

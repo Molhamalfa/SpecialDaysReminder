@@ -94,7 +94,7 @@ private struct CategoryDetailSheetPresenters: ViewModifier {
     func body(content: Content) -> some View {
         content
             .sheet(isPresented: $showingAddSpecialDaySheet) {
-                // FIXED: Removed themeColor argument from AddSpecialDayView
+                // CHANGED: Pass themeColor to AddSpecialDayView
                 AddSpecialDayView(viewModel: viewModel, initialCategory: selectedCategoryForAdd)
             }
     }
