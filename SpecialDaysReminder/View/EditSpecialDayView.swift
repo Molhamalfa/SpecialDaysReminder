@@ -12,7 +12,7 @@ import SwiftUI
 // Reminder settings have been removed from here.
 private struct EditSpecialDayFormContent: View {
     @Binding var specialDay: SpecialDayModel // Receive specialDay as a binding
-    let themeColor: Color
+    let themeColor: Color // UPDATED: Changed to Color
 
     var body: some View {
         Form {
@@ -39,32 +39,8 @@ private struct EditSpecialDayFormContent: View {
                     .foregroundColor(.black)
                     .lineLimit(3, reservesSpace: true)
             }
-
-            // REMOVED: Reminder Settings Section
-            // This section will be moved to SettingsView
-            /*
-            Section(header: Text("Reminder Settings").foregroundColor(.black)) {
-                Toggle(isOn: $specialDay.isReminderEnabled) {
-                    Text("Enable Reminder")
-                        .foregroundColor(.black)
-                }
-                .tint(themeColor)
-
-                if specialDay.isReminderEnabled {
-                    Picker("Frequency per Day", selection: $specialDay.reminderFrequency) {
-                        ForEach(1...3, id: \.self) { frequency in
-                            Text("\(frequency) time\(frequency == 1 ? "" : "s")")
-                                .tag(frequency)
-                                .foregroundColor(.black)
-                        }
-                    }
-                    .pickerStyle(.menu)
-                    .foregroundColor(.black)
-                }
-            }
-            */
         }
-        .background(themeColor.opacity(0.1)) // Use themeColor for background
+        .background(themeColor.opacity(0.1)) // UPDATED: Apply opacity to the Color
         .scrollContentBackground(.hidden) // Hide default list background
     }
 }
@@ -76,10 +52,10 @@ struct EditSpecialDayView: View {
     
     // Special day to be edited
     @State private var specialDay: SpecialDayModel // Use @State for mutable copy
-    let themeColor: Color // Property to accept the theme color
+    let themeColor: Color // UPDATED: Property to accept the theme Color
 
     // Initializer to receive the immutable specialDay and create a mutable copy
-    init(viewModel: SpecialDaysListViewModel, specialDay: SpecialDayModel, themeColor: Color) {
+    init(viewModel: SpecialDaysListViewModel, specialDay: SpecialDayModel, themeColor: Color) { // UPDATED: Changed themeGradient to themeColor
         _viewModel = ObservedObject(wrappedValue: viewModel)
         _specialDay = State(initialValue: specialDay) // Initialize @State with the passed model
         self.themeColor = themeColor // Initialize themeColor
@@ -88,7 +64,7 @@ struct EditSpecialDayView: View {
     var body: some View {
         NavigationView {
             // Use the extracted EditSpecialDayFormContent
-            EditSpecialDayFormContent(specialDay: $specialDay, themeColor: themeColor)
+            EditSpecialDayFormContent(specialDay: $specialDay, themeColor: themeColor) // UPDATED: Pass themeColor
             .navigationTitle("Edit Special Day")
             .navigationBarTitleDisplayMode(.inline)
             .navigationBarBackButtonHidden(true)
@@ -97,14 +73,14 @@ struct EditSpecialDayView: View {
                     Button("Cancel") {
                         dismiss()
                     }
-                    .foregroundColor(themeColor)
+                    .foregroundColor(.black) // Fixed to black for consistency
                 }
                 ToolbarItem(placement: .navigationBarTrailing) {
                     Button("Save") {
                         viewModel.updateSpecialDay(specialDay) // Update the original in ViewModel
                         dismiss()
                     }
-                    .foregroundColor(themeColor)
+                    .foregroundColor(.black) // Fixed to black for consistency
                 }
             }
         }
@@ -114,6 +90,6 @@ struct EditSpecialDayView: View {
 struct EditSpecialDayView_Previews: PreviewProvider {
     static var previews: some View {
         // Preview updated to reflect removal of reminder properties
-        EditSpecialDayView(viewModel: SpecialDaysListViewModel(), specialDay: SpecialDayModel(name: "Sample Edit", date: Date(), forWhom: "Preview", category: .friends), themeColor: .blue)
+        EditSpecialDayView(viewModel: SpecialDaysListViewModel(), specialDay: SpecialDayModel(name: "Sample Edit", date: Date(), forWhom: "Preview", category: .friends), themeColor: SpecialDayCategory.friends.color) // UPDATED: Pass Color
     }
 }

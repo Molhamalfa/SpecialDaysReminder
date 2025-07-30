@@ -61,7 +61,7 @@ private struct SpecialDaysListNavigationContent: ViewModifier {
                     CategoryDetailView(viewModel: viewModel, category: category)
                 case .editSpecialDay(let identifiableUUID):
                     if let dayToEdit = viewModel.specialDays.first(where: { $0.id == identifiableUUID.id }) {
-                        // FIXED: Pass themeColor to EditSpecialDayView
+                        // FIXED: Pass themeGradient to EditSpecialDayView
                         EditSpecialDayView(viewModel: viewModel, specialDay: dayToEdit, themeColor: dayToEdit.category.color)
                     } else {
                         // Handle case where day is not found (e.g., show an alert or go back)

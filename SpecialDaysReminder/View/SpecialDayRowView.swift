@@ -9,8 +9,7 @@ import SwiftUI
 
 struct SpecialDayRowView: View {
     let day: SpecialDayModel
-    let themeColor: Color
-    // Removed: let onTapAction: (SpecialDayModel) -> Void // No longer needed
+    let themeColor: Color // UPDATED: Changed to Color
 
     var body: some View {
         HStack {
@@ -18,29 +17,28 @@ struct SpecialDayRowView: View {
                 Text(day.name)
                     .font(.headline)
                     .fontWeight(.medium)
-                    .foregroundColor(themeColor.opacity(0.9))
+                    .foregroundColor(.white) // Fixed to white for contrast
                 Text(day.forWhom)
                     .font(.subheadline)
-                    .foregroundColor(themeColor.opacity(0.7))
+                    .foregroundColor(.white.opacity(0.8)) // Fixed to white for contrast
             }
             Spacer()
             VStack(alignment: .trailing) {
                 Text(day.daysUntilDescription)
                     .font(.subheadline)
                     .fontWeight(.bold)
-                    .foregroundColor(themeColor.opacity(0.9))
+                    .foregroundColor(.white) // Fixed to white for contrast
                 Text(day.formattedDate)
                     .font(.caption)
-                    .foregroundColor(themeColor.opacity(0.7))
+                    .foregroundColor(.white.opacity(0.8)) // Fixed to white for contrast
             }
         }
         .padding(.vertical, 8)
         .padding(.horizontal, 12)
-        .background(themeColor.opacity(0.15))
+        .background(themeColor) // UPDATED: Use the Color directly
         .cornerRadius(10)
         .shadow(color: Color.black.opacity(0.05), radius: 3, x: 0, y: 2)
         .contentShape(Rectangle()) // Makes the entire row tappable
-        // Removed: .onTapGesture { onTapAction(day) } // No longer needed, NavigationLink handles tap
         .listRowBackground(Color.clear)
         .listRowSeparator(.hidden)
         .padding(.vertical, 4)
@@ -51,8 +49,7 @@ struct SpecialDayRowView_Previews: PreviewProvider {
     static var previews: some View {
         SpecialDayRowView(
             day: SpecialDayModel(name: "Sample Event", date: Date(), forWhom: "Test Person", category: .other),
-            themeColor: .purple // Provide a sample theme color for preview
-            // Removed: onTapAction: { day in print("Tapped on: \(day.name)") }
+            themeColor: SpecialDayCategory.other.color // UPDATED: Pass Color
         )
         .previewLayout(.sizeThatFits)
         .padding()

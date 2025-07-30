@@ -27,14 +27,14 @@ struct EnableInteractivePopGesture: UIViewControllerRepresentable {
 // reducing complexity in the parent CategoryDetailView.
 private struct CategoryDetailListContent: View {
     let days: [SpecialDayModel] // Receive the filtered list directly
-    let themeColor: Color
+    let themeColor: Color // UPDATED: Changed to Color
     let deleteAction: (IndexSet) -> Void // Closure for onDelete
 
     var body: some View {
         List {
             ForEach(days, id: \.id) { day in // Iterate over the passed 'days'
                 NavigationLink(value: NavigationDestinationType.editSpecialDay(IdentifiableUUID(id: day.id))) {
-                    SpecialDayRowView(day: day, themeColor: themeColor)
+                    SpecialDayRowView(day: day, themeColor: themeColor) // UPDATED: Pass themeColor with correct argument label
                 }
                 .listRowBackground(Color.clear) // Ensure NavigationLink's row background is clear
             }
@@ -65,7 +65,7 @@ private struct CategoryDetailToolbarModifier: ViewModifier {
                     } label: {
                         Image(systemName: "chevron.left.circle.fill")
                             .font(.title2)
-                            .foregroundColor(category?.color ?? SpecialDayCategory.other.color)
+                            .foregroundColor(.black) // Fixed to black for consistency
                     }
                 }
 
@@ -77,7 +77,7 @@ private struct CategoryDetailToolbarModifier: ViewModifier {
                     } label: {
                         Image(systemName: "plus.circle.fill")
                             .font(.title2)
-                            .foregroundColor(category?.color ?? SpecialDayCategory.other.color)
+                            .foregroundColor(.black) // Fixed to black for consistency
                     }
                 }
             }
@@ -126,13 +126,18 @@ struct CategoryDetailView: View {
         VStack {
             CategoryDetailListContent(
                 days: categoryDetailViewModel.specialDaysForCategory, // Use data from new ViewModel
-                themeColor: category?.color ?? SpecialDayCategory.other.color,
+                themeColor: category?.color ?? SpecialDayCategory.other.color, // UPDATED: Pass Color
                 deleteAction: categoryDetailViewModel.deleteDay // Use delete action from new ViewModel
             )
 
             Spacer()
         }
-        .background((category?.color ?? SpecialDayCategory.other.color).opacity(0.1).edgesIgnoringSafeArea(.all))
+        // UPDATED: Use the Color directly as background
+        .background(
+            (category?.color ?? SpecialDayCategory.other.color)
+                .opacity(0.1) // Apply opacity to the Color view
+                .edgesIgnoringSafeArea(.all)
+        )
         
         // Apply the extracted toolbar modifier
         .modifier(CategoryDetailToolbarModifier(

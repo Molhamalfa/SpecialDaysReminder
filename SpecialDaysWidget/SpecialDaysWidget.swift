@@ -120,32 +120,43 @@ struct SpecialDaysWidgetView: View {
         VStack(alignment: .leading, spacing: 4) {
             if let day = entry.specialDay {
                 if family == .systemSmall {
-                    // Layout for small widget
-                    Text(day.name) // Event Name
-                        .font(.headline)
-                        .fontWeight(.bold)
-                        .foregroundColor(.white)
-                        .lineLimit(1)
-                        .minimumScaleFactor(0.7)
+                    // UPDATED: Layout for small widget
+                    VStack(alignment: .leading) { // Main VStack for small widget
+                        // Event Name (Top-Left)
+                        Text(day.name)
+                            .font(.headline)
+                            .fontWeight(.bold)
+                            .foregroundColor(.white)
+                            .lineLimit(1)
+                            .minimumScaleFactor(0.7)
+                            .frame(maxWidth: .infinity, alignment: .topLeading) // Ensure it's top-left within its space
 
-                    Text("For: \(day.forWhom)") // For Whom
-                        .font(.subheadline)
-                        .foregroundColor(.white.opacity(0.8))
-                        .lineLimit(1)
-                        .minimumScaleFactor(0.7)
+                        Spacer() // Pushes the number/days block down
 
-                    Spacer() // Pushes content to top
+                        // Days Left and "Days" (Centered)
+                        VStack(alignment: .center, spacing: -5) { // Adjusted spacing for "Days" text closer to number
+                            Text(day.daysUntilDescription.replacingOccurrences(of: " days", with: "").replacingOccurrences(of: "Today!", with: "0").replacingOccurrences(of: "Tomorrow!", with: "1"))
+                                .font(.system(size: 56)) // Made bigger
+                                .fontWeight(.heavy)
+                                .foregroundColor(.white)
+                                .minimumScaleFactor(0.7)
 
-                    Text(day.daysUntilDescription) // Days Until
-                        .font(.title2)
-                        .fontWeight(.heavy)
-                        .foregroundColor(.white)
-                        .padding(.vertical, 2)
-                        .padding(.horizontal, 8)
-                        .background(Color.white.opacity(0.2))
-                        .cornerRadius(5)
-                        .minimumScaleFactor(0.7) // Allow text to shrink
+                            // Always show "Days" text
+                            Text("Days")
+                                .font(.caption) // Same size as date
+                                .foregroundColor(.white.opacity(0.7))
+                        }
+                        .frame(maxWidth: .infinity, alignment: .center) // Center this block horizontally
 
+                        Spacer() // Pushes the date block up
+
+                        // Date (Bottom-Left)
+                        Text(day.formattedDate)
+                            .font(.caption)
+                            .foregroundColor(.white.opacity(0.7))
+                            .frame(maxWidth: .infinity, alignment: .bottomLeading) // Ensure it's bottom-left within its space
+                    }
+                    .frame(maxWidth: .infinity, maxHeight: .infinity) // Make the entire small widget VStack fill its space
                 } else {
                     // Existing layout for medium and large widgets
                     // Event Name
@@ -221,8 +232,8 @@ struct SpecialDaysWidgetView: View {
         }
         .padding() // Add padding around the content
         .containerBackground(for: .widget) {
-            // CHANGED: Widget background now matches the event's category color
-            // If no event, use a default light gray background
+            // Widget background now matches the event's category color with original opacity
+            // If no event, use a default light gray background with original opacity
             (entry.specialDay?.category.color ?? Color.gray).opacity(0.8)
         }
         // Make the entire widget tappable for deep linking
@@ -239,7 +250,7 @@ struct SpecialDaysWidgetBundle: WidgetBundle {
     }
 }
 
-// MARK: - SpecialDaysWidget
+// MARK: - Widget
 // Defines the widget's configuration (kind, display name, description).
 struct SpecialDaysWidget: Widget {
     let kind: String = "SpecialDaysWidget" // Unique identifier for the widget

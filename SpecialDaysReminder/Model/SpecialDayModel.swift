@@ -28,6 +28,7 @@ public enum SpecialDayCategory: String, CaseIterable, Codable, Identifiable, Has
     public var id: String { self.rawValue }
 
     // Computed property to provide a Color for each category
+    // REVERTED: Back to original solid Color values
     public var color: Color {
         switch self {
         case .lovedOnes: return .pink
