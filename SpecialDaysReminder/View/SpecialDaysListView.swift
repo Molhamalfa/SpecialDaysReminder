@@ -17,6 +17,7 @@ struct IdentifiableUUID: Identifiable, Equatable, Hashable {
 enum NavigationDestinationType: Hashable {
     case categoryDetail(SpecialDayCategory?) // For CategoryDetailView (nil for All Special Days)
     case editSpecialDay(IdentifiableUUID) // For EditSpecialDayView
+    case calendarImport // NEW: For the CalendarImportView
 }
 
 // MARK: - Helper ViewModifier for NavigationStack Content
@@ -41,12 +42,23 @@ private struct SpecialDaysListNavigationContent: ViewModifier {
             .navigationTitle("") // Hide default navigation title, but keep navigation bar present
             .navigationBarTitleDisplayMode(.inline) // Ensure title area is compact
             .toolbar {
+                // Settings Button (Trailing)
                 ToolbarItem(placement: .navigationBarTrailing) {
                     // Pass viewModel to SettingsView
                     NavigationLink(destination: SettingsView(specialDaysListViewModel: viewModel)) {
                         Image(systemName: "gearshape.fill") // Settings symbol
                             .font(.title2)
                             .foregroundColor(.black) // Fixed to black for light mode look
+                    }
+                }
+                // Import Button (Leading)
+                ToolbarItem(placement: .navigationBarLeading) {
+                    Button {
+                        navigationPath.append(NavigationDestinationType.calendarImport) // Push the new CalendarImportView
+                    } label: {
+                        Image(systemName: "square.and.arrow.down.fill") // Import icon
+                            .font(.title2)
+                            .foregroundColor(.black)
                     }
                 }
             }
@@ -58,15 +70,19 @@ private struct SpecialDaysListNavigationContent: ViewModifier {
             .navigationDestination(for: NavigationDestinationType.self) { destination in
                 switch destination {
                 case .categoryDetail(let category):
-                    CategoryDetailView(viewModel: viewModel, category: category)
+                    // FIX: Pass navigationPath to CategoryDetailView
+                    CategoryDetailView(viewModel: viewModel, category: category, navigationPath: $navigationPath)
                 case .editSpecialDay(let identifiableUUID):
                     if let dayToEdit = viewModel.specialDays.first(where: { $0.id == identifiableUUID.id }) {
-                        // FIXED: Pass themeGradient to EditSpecialDayView
+                        // Pass themeColor to EditSpecialDayView
                         EditSpecialDayView(viewModel: viewModel, specialDay: dayToEdit, themeColor: dayToEdit.category.color)
                     } else {
                         // Handle case where day is not found (e.g., show an alert or go back)
                         Text("Event not found.") // Placeholder for error handling
                     }
+                case .calendarImport: // NEW: Destination for CalendarImportView
+                    // Pass the SpecialDaysListViewModel to the CalendarImportView
+                    CalendarImportView(specialDaysListViewModel: viewModel)
                 }
             }
     }
@@ -102,6 +118,7 @@ struct SpecialDaysListView: View {
     @Binding var deepLinkEventID: UUID? // Kept as UUID? for external deep link handling
     // NEW: Binding to trigger showing the AddSpecialDaySheet from a deep link
     @Binding var deepLinkAddEvent: Bool // ADD THIS LINE
+
 
     // Animation states for initial load
     @State private var headerOpacity: Double = 0

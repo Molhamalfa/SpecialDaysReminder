@@ -9,6 +9,7 @@ import Foundation
 import Combine
 import UserNotifications // For checking notification authorization status
 import SwiftUI // For Date type for reminderTime
+import EventKit // For EKAuthorizationStatus
 
 class SettingsViewModel: ObservableObject {
     // MARK: - Published Properties
@@ -33,39 +34,51 @@ class SettingsViewModel: ObservableObject {
             if globalReminderFrequency < 1 { globalReminderFrequency = 1 }
             // Persist the setting whenever it changes.
             UserDefaults.standard.set(globalReminderFrequency, forKey: Constants.UserDefaultKeys.globalReminderFrequency)
-            // Adjust reminderTimes array size if frequency changes
+            // Adjust the reminder times array size if frequency changes.
             adjustReminderTimesArray()
-            // When frequency changes, re-evaluate all reminders.
+            // Re-evaluate all reminders when frequency changes.
             updateAllReminders()
         }
     }
 
-    // NEW: The specific times of day for reminders (now an array of Dates).
-    @Published var reminderTimes: [Date] = {
-        if let savedTimes = UserDefaults.standard.array(forKey: Constants.UserDefaultKeys.reminderTimes) as? [Date] {
-            return savedTimes
-        } else {
-            // When generating default times here, we must get the initial frequency directly from UserDefaults
-            let initialFrequency = UserDefaults.standard.integer(forKey: Constants.UserDefaultKeys.globalReminderFrequency)
-            let frequency = initialFrequency == 0 ? 1 : initialFrequency
-            return SettingsViewModel.generateDefaultReminderTimes(frequency: frequency)
+    // Array of specific times for daily reminders.
+    @Published var globalReminderTimes: [Date] = {
+        if let savedTimesData = UserDefaults.standard.data(forKey: Constants.UserDefaultKeys.reminderTimes),
+           let decodedTimes = try? JSONDecoder().decode([Date].self, from: savedTimesData) {
+            return decodedTimes
         }
+        // Default to a single 9 AM reminder if nothing is saved.
+        return SettingsViewModel.generateDefaultReminderTimes(frequency: 1)
     }() {
         didSet {
-            // Persist the array of times whenever it changes.
-            UserDefaults.standard.set(reminderTimes, forKey: Constants.UserDefaultKeys.reminderTimes)
-            // When times change, re-evaluate all reminders.
+            // Persist the setting whenever it changes.
+            if let encoded = try? JSONEncoder().encode(globalReminderTimes) {
+                UserDefaults.standard.set(encoded, forKey: Constants.UserDefaultKeys.reminderTimes)
+            }
+            // Re-evaluate all reminders when times change.
             updateAllReminders()
         }
     }
 
-    // Indicates if notification permissions have been granted.
+    // Tracks if notification authorization has been granted.
     @Published var notificationsAuthorized: Bool = false
+
+    // REMOVED: Calendar authorization status and message
+    // @Published var calendarAuthorized: Bool = false
+    // @Published var calendarImportMessage: String?
 
     // MARK: - Private Properties
 
-    private let reminderManager = ReminderManager() // Instance of our reminder manager
-    private var specialDaysListViewModel: SpecialDaysListViewModel // Reference to the main data source
+    // Reference to the main SpecialDaysListViewModel to access and modify the global list of special days.
+    private var specialDaysListViewModel: SpecialDaysListViewModel
+
+    // Manages scheduling and canceling of local notifications.
+    private let reminderManager = ReminderManager()
+
+    // REMOVED: CalendarManager instance
+    // private let calendarManager = CalendarManager()
+
+    // Set to hold Combine cancellables to prevent memory leaks.
     private var cancellables = Set<AnyCancellable>()
 
     // MARK: - Initialization
@@ -73,82 +86,99 @@ class SettingsViewModel: ObservableObject {
     init(specialDaysListViewModel: SpecialDaysListViewModel) {
         self.specialDaysListViewModel = specialDaysListViewModel
 
-        // Removed all explicit UserDefaults loading here, as it's now handled in property declarations.
-        // Removed: if self.globalReminderFrequency == 0 { ... }
-        // Removed: if let savedTimes = ... else { ... }
-        // Removed: adjustReminderTimesArray() // This is now called from didSet of globalReminderFrequency
+        // Adjust reminder times array initially based on loaded frequency
+        adjustReminderTimesArray()
 
-        // Request notification authorization on init (or when settings view appears)
-        requestNotificationAuthorization()
-
-        // Observe changes in the main list of special days.
-        // If events are added/removed/updated, we need to re-schedule reminders.
+        // Observe changes in the main specialDays list to re-schedule reminders.
         specialDaysListViewModel.$specialDays
             .sink { [weak self] _ in
                 self?.updateAllReminders()
             }
             .store(in: &cancellables)
+
+        // Check initial notification authorization status
+        checkNotificationAuthorizationStatus()
+        // REMOVED: Initial calendar authorization status check
+        // checkCalendarAuthorizationStatus()
     }
 
-    // MARK: - Public Methods
+    // MARK: - Notification Management
 
-    // Requests notification authorization and updates the `notificationsAuthorized` status.
+    // Requests notification authorization from the user.
     func requestNotificationAuthorization() {
-        UNUserNotificationCenter.current().requestAuthorization(options: [.alert, .sound, .badge]) { [weak self] granted, error in
+        // FIX: Call reminderManager.requestNotificationAuthorization with the completion handler.
+        reminderManager.requestNotificationAuthorization { [weak self] granted, error in
             DispatchQueue.main.async {
                 self?.notificationsAuthorized = granted
                 if !granted {
-                    print("Notification authorization denied: \(error?.localizedDescription ?? "Unknown error")")
-                    // If denied, ensure reminders are off and cancel any existing.
-                    self?.isGlobalReminderEnabled = false
-                    self?.reminderManager.cancelAllReminders()
+                    // Optionally, guide user to settings if denied
+                    // UPDATED: Removed direct calendarImportMessage as it's no longer in this ViewModel
+                    // self?.calendarImportMessage = "Notifications denied. Please enable in Settings."
                 } else {
-                    // If granted, update reminders based on current settings.
-                    self?.updateAllReminders()
+                    self?.updateAllReminders() // Schedule if granted
                 }
             }
         }
     }
 
-    // Opens app settings so the user can manually change notification permissions.
-    func openAppSettings() {
-        if let url = URL(string: UIApplication.openSettingsURLString) {
-            if UIApplication.shared.canOpenURL(url) {
-                UIApplication.shared.open(url)
+    // Checks the current notification authorization status.
+    func checkNotificationAuthorizationStatus() {
+        // UPDATED: Use the new getNotificationAuthorizationStatus from ReminderManager
+        reminderManager.getNotificationAuthorizationStatus { [weak self] status in
+            DispatchQueue.main.async {
+                // Address deprecation warning by checking for more specific statuses.
+                // If status is not denied or not determined, we consider it authorized for general purposes.
+                self?.notificationsAuthorized = (status != .denied && status != .notDetermined)
+                
+                // If authorization is denied, disable global reminders
+                if status == .denied {
+                    self?.isGlobalReminderEnabled = false
+                }
+                self?.updateAllReminders() // Update reminders based on current status
             }
         }
     }
 
-    // MARK: - Private Helpers
+    // MARK: - Calendar Import Management (REMOVED from this ViewModel)
 
-    // Generates a default array of reminder times based on frequency.
-    private static func generateDefaultReminderTimes(frequency: Int) -> [Date] {
+    // REMOVED: requestCalendarAuthorization()
+    // REMOVED: checkCalendarAuthorizationStatus()
+    // REMOVED: importCalendarEvents()
+
+    // MARK: - Helper Methods
+
+    // Generates default reminder times based on frequency.
+    static func generateDefaultReminderTimes(frequency: Int) -> [Date] {
         var times: [Date] = []
         let calendar = Calendar.current
         let now = Date()
 
         switch frequency {
         case 1:
-            times.append(calendar.date(bySettingHour: 9, minute: 0, second: 0, of: now)!) // 9 AM
+            // Default 9 AM
+            times.append(calendar.date(bySettingHour: 9, minute: 0, second: 0, of: now) ?? now)
         case 2:
-            times.append(calendar.date(bySettingHour: 9, minute: 0, second: 0, of: now)!) // 9 AM
-            times.append(calendar.date(bySettingHour: 15, minute: 0, second: 0, of: now)!) // 3 PM
+            // Default 9 AM, 3 PM
+            times.append(calendar.date(bySettingHour: 9, minute: 0, second: 0, of: now) ?? now)
+            times.append(calendar.date(bySettingHour: 15, minute: 0, second: 0, of: now) ?? now)
         case 3:
-            times.append(calendar.date(bySettingHour: 9, minute: 0, second: 0, of: now)!) // 9 AM
-            times.append(calendar.date(bySettingHour: 13, minute: 0, second: 0, of: now)!) // 1 PM
-            times.append(calendar.date(bySettingHour: 17, minute: 0, second: 0, of: now)!) // 5 PM
+            // Default 9 AM, 1 PM, 5 PM
+            times.append(calendar.date(bySettingHour: 9, minute: 0, second: 0, of: now) ?? now)
+            times.append(calendar.date(bySettingHour: 13, minute: 0, second: 0, of: now) ?? now)
+            times.append(calendar.date(bySettingHour: 17, minute: 0, second: 0, of: now) ?? now)
         default:
-            times.append(calendar.date(bySettingHour: 9, minute: 0, second: 0, of: now)!) // Fallback to 9 AM
+            // Fallback to 9 AM
+            times.append(calendar.date(bySettingHour: 9, minute: 0, second: 0, of: now) ?? now)
         }
         return times
     }
 
-    // Adjusts the `reminderTimes` array size and content when `globalReminderFrequency` changes.
+    // Adjusts the `globalReminderTimes` array size and content when `globalReminderFrequency` changes.
     private func adjustReminderTimesArray() {
-        if reminderTimes.count != globalReminderFrequency {
+        if globalReminderTimes.count != globalReminderFrequency {
             // If frequency increases, add default times.
             // If frequency decreases, truncate the array.
-            reminderTimes = SettingsViewModel.generateDefaultReminderTimes(frequency: globalReminderFrequency)
+            globalReminderTimes = SettingsViewModel.generateDefaultReminderTimes(frequency: globalReminderFrequency)
         }
     }
 
@@ -159,7 +189,7 @@ class SettingsViewModel: ObservableObject {
             reminderManager.scheduleReminders(
                 for: specialDaysListViewModel.specialDays,
                 frequencyPerDay: globalReminderFrequency,
-                atTimes: reminderTimes
+                atTimes: globalReminderTimes
             )
         } else {
             // If global reminders are disabled or not authorized, cancel all.

@@ -27,18 +27,38 @@ struct EnableInteractivePopGesture: UIViewControllerRepresentable {
 // reducing complexity in the parent CategoryDetailView.
 private struct CategoryDetailListContent: View {
     let days: [SpecialDayModel] // Receive the filtered list directly
-    let themeColor: Color // UPDATED: Changed to Color
+    let themeColor: Color
     let deleteAction: (IndexSet) -> Void // Closure for onDelete
+    @Binding var navigationPath: NavigationPath // NEW: Added navigationPath binding
 
     var body: some View {
         List {
             ForEach(days, id: \.id) { day in // Iterate over the passed 'days'
                 NavigationLink(value: NavigationDestinationType.editSpecialDay(IdentifiableUUID(id: day.id))) {
-                    SpecialDayRowView(day: day, themeColor: themeColor) // UPDATED: Pass themeColor with correct argument label
+                    SpecialDayRowView(day: day, themeColor: themeColor)
                 }
                 .listRowBackground(Color.clear) // Ensure NavigationLink's row background is clear
+                // NEW: Add swipe actions for Edit and Delete
+                .swipeActions(edge: .trailing, allowsFullSwipe: false) {
+                    Button(role: .destructive) {
+                        if let index = days.firstIndex(where: { $0.id == day.id }) {
+                            deleteAction(IndexSet(integer: index))
+                        }
+                    } label: {
+                        Label("Delete", systemImage: "trash.fill")
+                    }
+                    .tint(.red)
+
+                    Button {
+                        // Navigate to EditSpecialDayView
+                        navigationPath.append(NavigationDestinationType.editSpecialDay(IdentifiableUUID(id: day.id)))
+                    } label: {
+                        Label("Edit", systemImage: "pencil.circle.fill")
+                    }
+                    .tint(.blue) // A distinct color for edit
+                }
             }
-            .onDelete(perform: deleteAction) // Use the passed delete action
+            // Removed .onDelete(perform: deleteAction) from ForEach, as swipeActions handles it per row
         }
         .listStyle(.plain)
         .background(Color.clear)
@@ -112,27 +132,31 @@ struct CategoryDetailView: View {
     // State for presenting the AddSpecialDayView sheet
     @State private var showingAddSpecialDaySheet = false
     @State private var selectedCategoryForAdd: SpecialDayCategory?
+    
+    @Binding var navigationPath: NavigationPath // NEW: Added navigationPath binding
 
     // MARK: - Initialization
     // Custom initializer to set up the CategoryDetailViewModel.
-    init(viewModel: SpecialDaysListViewModel, category: SpecialDayCategory?) {
+    init(viewModel: SpecialDaysListViewModel, category: SpecialDayCategory?, navigationPath: Binding<NavigationPath>) { // UPDATED: Added navigationPath
         _specialDaysListViewModel = ObservedObject(wrappedValue: viewModel)
         self.category = category
         // Initialize the StateObject for CategoryDetailViewModel
         _categoryDetailViewModel = StateObject(wrappedValue: CategoryDetailViewModel(category: category, specialDaysListViewModel: viewModel))
+        _navigationPath = navigationPath // Initialize navigationPath
     }
 
     var body: some View {
         VStack {
             CategoryDetailListContent(
                 days: categoryDetailViewModel.specialDaysForCategory, // Use data from new ViewModel
-                themeColor: category?.color ?? SpecialDayCategory.other.color, // UPDATED: Pass Color
-                deleteAction: categoryDetailViewModel.deleteDay // Use delete action from new ViewModel
+                themeColor: category?.color ?? SpecialDayCategory.other.color, // Pass Color
+                deleteAction: categoryDetailViewModel.deleteDay, // Use delete action from new ViewModel
+                navigationPath: $navigationPath // NEW: Pass navigationPath
             )
 
             Spacer()
         }
-        // UPDATED: Use the Color directly as background
+        // REVERTED: Use the Color with original opacity as background
         .background(
             (category?.color ?? SpecialDayCategory.other.color)
                 .opacity(0.1) // Apply opacity to the Color view
@@ -164,10 +188,10 @@ struct CategoryDetailView: View {
 // MARK: - Preview Provider
 struct CategoryDetailView_Previews: PreviewProvider {
     static var previews: some View {
-        CategoryDetailView(viewModel: SpecialDaysListViewModel(), category: .family)
+        CategoryDetailView(viewModel: SpecialDaysListViewModel(), category: .family, navigationPath: .constant(NavigationPath())) // UPDATED: Pass navigationPath
             .previewDisplayName("Family Category Detail")
 
-        CategoryDetailView(viewModel: SpecialDaysListViewModel(), category: nil)
+        CategoryDetailView(viewModel: SpecialDaysListViewModel(), category: nil, navigationPath: .constant(NavigationPath())) // UPDATED: Pass navigationPath
             .previewDisplayName("All Special Days Detail")
     }
 }

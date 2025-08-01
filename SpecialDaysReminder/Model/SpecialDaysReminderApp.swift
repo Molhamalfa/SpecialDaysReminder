@@ -16,6 +16,9 @@ struct SpecialDaysReminderApp: App {
     // State to trigger showing the AddSpecialDaySheet from a deep link
     @State private var deepLinkAddEvent: Bool = false
 
+    // NEW: Instance of CalendarManager to request authorization at app launch
+    @StateObject private var calendarManager = CalendarManager()
+
     var body: some Scene {
         WindowGroup {
             // Pass the deepLinkCategory, deepLinkEventID, and deepLinkAddEvent as bindings to SpecialDaysListView
@@ -57,6 +60,18 @@ struct SpecialDaysReminderApp: App {
                     } else {
                         // Handle unknown or malformed deep links
                         // (States already reset above)
+                    }
+                }
+                // NEW: Request calendar authorization when the app first appears
+                .onAppear {
+                    calendarManager.requestCalendarAuthorization { granted, error in
+                        // This completion block is primarily for logging/debugging the initial request.
+                        // The SettingsViewModel will check the status independently.
+                        if granted {
+                            print("Initial calendar authorization request granted.")
+                        } else {
+                            print("Initial calendar authorization request denied or failed: \(error?.localizedDescription ?? "Unknown error")")
+                        }
                     }
                 }
         }

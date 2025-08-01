@@ -27,90 +27,82 @@ class ReminderManager {
 
     // Requests notification authorization from the user.
     // This should be called early in the app lifecycle (e.g., on app launch or when user tries to enable reminders).
-    func requestNotificationAuthorization() {
+    // UPDATED: Added a completion handler to report authorization status back to the caller.
+    func requestNotificationAuthorization(completion: @escaping (Bool, Error?) -> Void) {
         UNUserNotificationCenter.current().requestAuthorization(options: [.alert, .sound, .badge]) { granted, error in
             if granted {
                 print("Notification authorization granted.")
+                completion(true, nil) // Report success
             } else if let error = error {
                 print("Notification authorization denied: \(error.localizedDescription)")
+                completion(false, error) // Report failure with error
+            } else {
+                print("Notification authorization denied (unknown reason).")
+                completion(false, nil) // Report denial without specific error
             }
+        }
+    }
+
+    // Checks the current notification authorization status.
+    func getNotificationAuthorizationStatus(completion: @escaping (UNAuthorizationStatus) -> Void) {
+        UNUserNotificationCenter.current().getNotificationSettings { settings in
+            completion(settings.authorizationStatus)
         }
     }
 
     // MARK: - Scheduling Reminders
 
-    // Schedules reminders for a list of special days based on global settings.
-    // Reminders will be scheduled for events that are within the 'reminderStartDaysBefore' window.
-    // frequencyPerDay: How many notifications to send per day (e.g., 1 for once a day, 2 for twice a day).
-    // atTimes: An array of specific times of day (hour and minute) when notifications should be sent.
-    func scheduleReminders(for specialDays: [SpecialDayModel], frequencyPerDay: Int, atTimes: [Date]) { // CHANGED: Parameter name and type to [Date]
-        // First, cancel all existing reminders to ensure a clean slate before rescheduling.
-        // This prevents duplicate notifications or lingering old reminders.
-        cancelAllReminders() // Cancel all before rescheduling specific ones
-
-        guard frequencyPerDay > 0 else {
-            print("Reminder frequency is invalid. Not scheduling any reminders.")
-            return
-        }
-        
-        // Ensure the number of provided times matches the frequency
-        guard atTimes.count == frequencyPerDay else {
-            print("Number of provided reminder times (\(atTimes.count)) does not match frequency per day (\(frequencyPerDay)). Not scheduling reminders.")
-            return
-        }
+    // Schedules notifications for upcoming special days.
+    // It filters for events that are within `reminderStartDaysBefore` days.
+    func scheduleReminders(for specialDays: [SpecialDayModel], frequencyPerDay: Int, atTimes reminderTimes: [Date]) {
+        // First, cancel all existing reminders to avoid duplicates and outdated notifications.
+        cancelAllReminders()
 
         let calendar = Calendar.current
         let now = Date()
-        let startOfToday = calendar.startOfDay(for: now)
 
-        // Filter for events that are within the reminder window (today or in the next 3 days).
+        // Filter for relevant upcoming days (within the reminder window)
         let relevantDays = specialDays.filter { day in
-            let eventDate = day.nextOccurrenceDate
-            let daysUntilEvent = calendar.dateComponents([.day], from: startOfToday, to: calendar.startOfDay(for: eventDate)).day ?? 0
-            return daysUntilEvent <= ReminderManager.reminderStartDaysBefore && daysUntilEvent >= 0
+            let daysUntil = day.daysUntil
+            return daysUntil >= 0 && daysUntil <= ReminderManager.reminderStartDaysBefore
         }
 
-        // Schedule notifications for each relevant day.
+        print("Scheduling reminders for \(relevantDays.count) relevant events...")
+
         for day in relevantDays {
-            let eventDate = day.nextOccurrenceDate
-            let daysUntilEvent = calendar.dateComponents([.day], from: startOfToday, to: calendar.startOfDay(for: eventDate)).day ?? 0
+            // Schedule multiple notifications per day based on frequency and times
+            for (index, time) in reminderTimes.enumerated() {
+                // Calculate the exact trigger date for this reminder
+                var dateComponents = calendar.dateComponents([.year, .month, .day], from: day.nextOccurrenceDate)
+                let timeComponents = calendar.dateComponents([.hour, .minute, .second], from: time)
 
-            // Schedule notifications for each day from today until the event day.
-            for i in 0...daysUntilEvent {
-                guard let reminderDate = calendar.date(byAdding: .day, value: i, to: startOfToday) else { continue }
+                dateComponents.hour = timeComponents.hour
+                dateComponents.minute = timeComponents.minute
+                dateComponents.second = timeComponents.second
 
-                for timeDate in atTimes { // Iterate through the provided 'atTimes' array
-                    let reminderHour = calendar.component(.hour, from: timeDate)
-                    let reminderMinute = calendar.component(.minute, from: timeDate)
+                if let triggerDate = calendar.date(from: dateComponents) {
+                    // Ensure the trigger date is in the future
+                    guard triggerDate > now else { continue }
 
-                    var triggerDateComponents = calendar.dateComponents([.year, .month, .day], from: reminderDate)
-                    triggerDateComponents.hour = reminderHour
-                    triggerDateComponents.minute = reminderMinute
+                    let content = UNMutableNotificationContent()
+                    content.title = "Special Day Reminder: \(day.name)"
+                    content.body = "\(day.forWhom)'s \(day.name) is \(day.daysUntilDescription)!"
+                    content.sound = .default // Default notification sound
 
-                    guard let triggerDate = calendar.date(from: triggerDateComponents) else { continue }
+                    // Create a unique identifier for each notification
+                    // Format: com.specialdaysreminder.eventReminder.<UUID>.<index>
+                    let notificationIdentifier = "\(ReminderManager.notificationBaseIdentifier)\(day.id.uuidString).\(index)"
 
-                    // Ensure we don't schedule for times already past today
-                    if triggerDate > now {
-                        let content = UNMutableNotificationContent()
-                        content.title = "Special Day Reminder: \(day.name)"
-                        content.body = "\(day.daysUntilDescription) until \(day.name) for \(day.forWhom)!"
-                        content.sound = .default // Play default notification sound
+                    let trigger = UNCalendarNotificationTrigger(dateMatching: dateComponents, repeats: false) // No repeat for individual notifications
 
-                        // Add user info for deep linking or context
-                        content.userInfo = ["eventID": day.id.uuidString]
+                    let request = UNNotificationRequest(identifier: notificationIdentifier, content: content, trigger: trigger)
 
-                        // Create a unique identifier for each notification request.
-                        let notificationIdentifier = "\(ReminderManager.notificationBaseIdentifier)\(day.id.uuidString).\(calendar.component(.year, from: triggerDate))-\(calendar.component(.month, from: triggerDate))-\(calendar.component(.day, from: triggerDate))-\(reminderHour)-\(reminderMinute)"
-
-                        let trigger = UNCalendarNotificationTrigger(dateMatching: triggerDateComponents, repeats: false)
-                        let request = UNNotificationRequest(identifier: notificationIdentifier, content: content, trigger: trigger)
-
-                        UNUserNotificationCenter.current().add(request) { error in
-                            if let error = error {
-                                print("Error scheduling notification for \(day.name) (ID: \(day.id)): \(error.localizedDescription)")
-                            } else {
-                                print("Scheduled notification for \(day.name) on \(triggerDate.formatted()) with ID: \(notificationIdentifier)")
-                            }
+                    // Add the notification request to the UNUserNotificationCenter
+                    UNUserNotificationCenter.current().add(request) { error in
+                        if let error = error {
+                            print("Error scheduling notification for \(day.name): \(error.localizedDescription)")
+                        } else {
+                            print("Scheduled notification for \(day.name) on \(triggerDate.formatted()) with ID: \(notificationIdentifier)")
                         }
                     }
                 }

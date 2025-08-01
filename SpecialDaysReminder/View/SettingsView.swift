@@ -36,34 +36,34 @@ private struct ReminderSettingsSection: View {
 
                     // Time Pickers for Reminders
                     ForEach(0..<viewModel.globalReminderFrequency, id: \.self) { index in
-                        DatePicker("Reminder \(index + 1) Time", selection: $viewModel.reminderTimes[index], displayedComponents: .hourAndMinute)
-                            .foregroundColor(.black)
+                        DatePicker("Reminder \(index + 1) Time", selection: Binding(
+                            get: { viewModel.globalReminderTimes.indices.contains(index) ? viewModel.globalReminderTimes[index] : Date() },
+                            set: { newValue in viewModel.globalReminderTimes[index] = newValue }
+                        ), displayedComponents: .hourAndMinute)
+                        .foregroundColor(.black)
                     }
                 } else {
-                    // Message and button to request/manage permissions
-                    VStack(alignment: .leading) {
-                        Text("Notifications are not authorized.")
-                            .font(.subheadline)
-                            .foregroundColor(.red)
-                        Button("Grant Notification Access") {
-                            viewModel.openAppSettings() // Direct user to app settings
-                        }
-                        .foregroundColor(.blue)
-                    }
+                    // Message if notifications are not authorized
+                    Text("Notifications are not authorized. Please enable them in iOS Settings to receive reminders.")
+                        .font(.footnote)
+                        .foregroundColor(.red)
+                        .padding(.vertical, 5)
                 }
             }
         }
     }
 }
 
-
+// MARK: - SettingsView
+// This view allows users to configure various app settings.
 struct SettingsView: View {
     @Environment(\.dismiss) var dismiss
-    @ObservedObject var specialDaysListViewModel: SpecialDaysListViewModel // Passed from parent
-    @StateObject private var viewModel: SettingsViewModel // New ViewModel for settings
+    
+    // Use StateObject to manage the lifecycle of SettingsViewModel
+    @StateObject var viewModel: SettingsViewModel
 
+    // Custom initializer to pass the main ViewModel
     init(specialDaysListViewModel: SpecialDaysListViewModel) {
-        _specialDaysListViewModel = ObservedObject(wrappedValue: specialDaysListViewModel)
         _viewModel = StateObject(wrappedValue: SettingsViewModel(specialDaysListViewModel: specialDaysListViewModel))
     }
 
@@ -77,6 +77,30 @@ struct SettingsView: View {
 
             // NEW: Use the extracted ReminderSettingsSection
             ReminderSettingsSection(viewModel: viewModel)
+
+            // REMOVED: Calendar Import Section
+            /*
+            Section(header: Text("Calendar Import").foregroundColor(.black)) {
+                if viewModel.calendarAuthorized {
+                    Button("Import Events from Calendar") {
+                        viewModel.importCalendarEvents()
+                    }
+                    .foregroundColor(.blue) // Standard button color
+                } else {
+                    Button("Request Calendar Access") {
+                        viewModel.requestCalendarAuthorization()
+                    }
+                    .foregroundColor(.orange) // Highlight for action needed
+                }
+
+                if let message = viewModel.calendarImportMessage {
+                    Text(message)
+                        .font(.footnote)
+                        .foregroundColor(message.contains("Success") ? .green : .red)
+                        .padding(.vertical, 5)
+                }
+            }
+            */
         }
         .background(Color.gray.opacity(0.1)) // Subtle gray background
         .scrollContentBackground(.hidden) // Hide default list background
@@ -94,6 +118,8 @@ struct SettingsView: View {
         .onAppear {
             // Request notification authorization when the settings view appears
             viewModel.requestNotificationAuthorization()
+            // REMOVED: Check calendar authorization status when the settings view appears
+            // viewModel.checkCalendarAuthorizationStatus()
         }
     }
 }
@@ -104,4 +130,3 @@ struct SettingsView_Previews: PreviewProvider {
         SettingsView(specialDaysListViewModel: SpecialDaysListViewModel())
     }
 }
-
