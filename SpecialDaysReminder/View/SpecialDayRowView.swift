@@ -36,7 +36,8 @@ struct SpecialDayRowView: View {
         .padding(.vertical, 8)
         .padding(.horizontal, 12)
         .background(themeColor) // UPDATED: Use the Color directly
-        .cornerRadius(10)
+        // UPDATED: Adjusted corner radius to match the other cards
+        .cornerRadius(25)
         .shadow(color: Color.black.opacity(0.05), radius: 3, x: 0, y: 2)
         .contentShape(Rectangle()) // Makes the entire row tappable
         .listRowBackground(Color.clear)

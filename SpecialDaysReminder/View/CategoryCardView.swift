@@ -46,47 +46,41 @@ struct CategoryCardView: View {
                 Text("No special days yet.")
                     .font(.subheadline)
                     .foregroundColor(.white.opacity(0.8))
-                    .padding(.vertical, 10)
+                    .padding(.vertical, 10) // Provide some vertical padding
                 Spacer() // Pushes content to bottom
             } else {
-                VStack(alignment: .leading, spacing: 5) {
-                    ForEach(specialDays.prefix(2)) { day in
-                        HStack {
-                            Text(day.name)
-                                .font(.subheadline)
-                                .lineLimit(1)
-                                .foregroundColor(.white)
-                            Spacer()
+                VStack(alignment: .leading, spacing: 8) {
+                    ForEach(specialDays.prefix(2), id: \.id) { day in
+                        VStack(alignment: .leading) {
                             Text(day.daysUntilDescription)
                                 .font(.caption)
-                                .foregroundColor(.white.opacity(0.8))
+                                .fontWeight(.bold)
+                                .foregroundColor(.white)
+                            HStack {
+                                Text(day.name)
+                                    .font(.subheadline)
+                                    .lineLimit(1)
+                                    .foregroundColor(.white)
+                                Spacer()
+                                Text(day.formattedDate)
+                                    .font(.caption)
+                                    .foregroundColor(.white.opacity(0.8))
+                            }
                         }
-                        .contentShape(Rectangle())
-                        .onTapGesture {
-                            onDayTapped(day)
-                        }
-                    }
-                    if specialDays.count > 2 {
-                        Text("+\(specialDays.count - 2) more...")
-                            .font(.caption)
-                            .foregroundColor(.white.opacity(0.8))
-                            .padding(.top, 5)
                     }
                 }
-                Spacer() // Ensures content is pushed to the top within the fixed frame
             }
         }
-        .padding()
-        .background(category.color)
-        .cornerRadius(15)
-        .shadow(color: Color.black.opacity(0.1), radius: 5, x: 0, y: 2)
-        .frame(minHeight: 170, maxHeight: 170) // CHANGED: Increased fixed height for better consistency
+        .padding(20)
+        .frame(height: 180) // Fixed height for consistent card size
+        .frame(maxWidth: .infinity)
+        .background(category.color.gradient)
+        // UPDATED: Adjusted corner radius to match the phones corner radius
+        .cornerRadius(25)
+        .shadow(color: Color.black.opacity(0.1), radius: 8, x: 0, y: 4)
+        .contentShape(RoundedRectangle(cornerRadius: 25))
     }
 }
-
-// MARK: - SpecialDayCategory Extension
-// This provides a color and icon for each category.
-
 
 // MARK: - Preview Provider
 struct CategoryCardView_Previews: PreviewProvider {
@@ -95,9 +89,8 @@ struct CategoryCardView_Previews: PreviewProvider {
             CategoryCardView(
                 category: .lovedOnes,
                 specialDays: [
-                    SpecialDayModel(name: "Mom's Birthday", date: Date(), forWhom: "Mom", category: .lovedOnes),
-                    SpecialDayModel(name: "Anniversary", date: Date().addingTimeInterval(86400 * 30), forWhom: "Partner", category: .lovedOnes),
-                    SpecialDayModel(name: "Event 3", date: Date().addingTimeInterval(86400 * 60), forWhom: "Another", category: .lovedOnes)
+                    SpecialDayModel(name: "Birthday", date: Date().addingTimeInterval(86400), forWhom: "John", category: .lovedOnes),
+                    SpecialDayModel(name: "Anniversary", date: Date().addingTimeInterval(86400 * 5), forWhom: "Jane", category: .lovedOnes)
                 ],
                 onAddTapped: { _ in },
                 onDayTapped: { _ in }

@@ -86,7 +86,7 @@ class ReminderManager {
 
                     let content = UNMutableNotificationContent()
                     content.title = "Special Day Reminder: \(day.name)"
-                    content.body = "\(day.forWhom)'s \(day.name) is \(day.daysUntilDescription)!"
+                    content.body = "\(String(describing: day.forWhom))'s \(day.name) is \(day.daysUntilDescription)!"
                     content.sound = .default // Default notification sound
 
                     // Create a unique identifier for each notification
