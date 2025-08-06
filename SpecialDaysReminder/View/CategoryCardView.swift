@@ -42,12 +42,10 @@ struct CategoryCardView: View {
             .padding(.bottom, 5)
 
             if specialDays.isEmpty {
-                Spacer() // Pushes content to top
                 Text("No special days yet.")
                     .font(.subheadline)
                     .foregroundColor(.white.opacity(0.8))
-                    .padding(.vertical, 10) // Provide some vertical padding
-                Spacer() // Pushes content to bottom
+                    .padding(.vertical, 10)
             } else {
                 VStack(alignment: .leading, spacing: 8) {
                     ForEach(specialDays.prefix(2), id: \.id) { day in
@@ -68,23 +66,22 @@ struct CategoryCardView: View {
                             }
                         }
                     }
-                    // NEW: Show "X more..." if there are more than 2 events
                     if specialDays.count > 2 {
                         Text("(\(specialDays.count - 2) more...)")
-                            .font(.caption2) // Smaller font for the count
+                            .font(.caption2)
                             .fontWeight(.medium)
                             .foregroundColor(.white.opacity(0.9))
-                            .padding(.top, 4) // Small padding above the text
-                            .frame(maxWidth: .infinity, alignment: .trailing) // Align to the trailing edge
+                            .padding(.top, 4)
+                            .frame(maxWidth: .infinity, alignment: .trailing)
                     }
                 }
             }
+            Spacer()
         }
         .padding(20)
-        .frame(height: 180) // Fixed height for consistent card size
+        .frame(height: 200) // UPDATED: Increased height to accommodate "X more..." text
         .frame(maxWidth: .infinity)
         .background(category.color.gradient)
-        // UPDATED: Adjusted corner radius to match the phones corner radius
         .cornerRadius(25)
         .shadow(color: Color.black.opacity(0.1), radius: 8, x: 0, y: 4)
         .contentShape(RoundedRectangle(cornerRadius: 25))
