@@ -13,7 +13,8 @@ struct AddSpecialDayView: View {
     
     // Initial category if adding from a specific category card
     let initialCategory: SpecialDayCategory?
-    // Removed: let themeColor: Color // No longer needed here
+    // NEW: Property to hold the theme color for the background
+    let themeColor: Color
 
     @State private var name: String = ""
     @State private var date: Date = Date()
@@ -21,10 +22,12 @@ struct AddSpecialDayView: View {
     @State private var category: SpecialDayCategory = .other
     @State private var notes: String = ""
 
-    // Custom initializer to accept initialCategory (themeColor removed)
-    init(viewModel: SpecialDaysListViewModel, initialCategory: SpecialDayCategory?) { // UPDATED: Removed themeColor
+    // Custom initializer to accept initialCategory and themeColor
+    init(viewModel: SpecialDaysListViewModel, initialCategory: SpecialDayCategory?) {
         _viewModel = ObservedObject(wrappedValue: viewModel)
         self.initialCategory = initialCategory
+        // NEW: Initialize themeColor based on initialCategory or default to .other
+        self.themeColor = initialCategory?.color ?? SpecialDayCategory.other.color
     }
 
     var body: some View {
@@ -54,7 +57,8 @@ struct AddSpecialDayView: View {
                         .lineLimit(3, reservesSpace: true)
                 }
             }
-            .background(Color.gray.opacity(0.3)) // UPDATED: Fixed background to white
+            // UPDATED: Use the themeColor with opacity for the background
+            .background(themeColor.opacity(0.1))
             .scrollContentBackground(.hidden) // Hide default list background
             .navigationTitle("Add Special Day")
             .navigationBarTitleDisplayMode(.inline)
@@ -63,7 +67,7 @@ struct AddSpecialDayView: View {
                     Button("Cancel") {
                         dismiss()
                     }
-                    .foregroundColor(.black) // UPDATED: Fixed button color to black
+                    .foregroundColor(.black)
                 }
                 ToolbarItem(placement: .navigationBarTrailing) {
                     Button("Save") {
@@ -71,7 +75,7 @@ struct AddSpecialDayView: View {
                         viewModel.addSpecialDay(newDay)
                         dismiss()
                     }
-                    .foregroundColor(.black) // UPDATED: Fixed button color to black
+                    .foregroundColor(.black)
                 }
             }
         }
@@ -86,6 +90,7 @@ struct AddSpecialDayView: View {
 
 struct AddSpecialDayView_Previews: PreviewProvider {
     static var previews: some View {
-        AddSpecialDayView(viewModel: SpecialDaysListViewModel(), initialCategory: .family) // UPDATED: Removed themeColor from preview
+        // UPDATED: Pass a sample themeColor for the preview
+        AddSpecialDayView(viewModel: SpecialDaysListViewModel(), initialCategory: .family)
     }
 }
