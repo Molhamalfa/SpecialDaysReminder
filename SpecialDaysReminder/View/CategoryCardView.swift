@@ -23,11 +23,8 @@ struct CategoryCardView: View {
                 Image(systemName: customIcon ?? category.iconName)
                     .font(.title2)
                     .foregroundColor(.white)
-                Text(customTitle ?? category.displayName)
-                    .font(.headline)
-                    .fontWeight(.bold)
-                    .foregroundColor(.white)
-                Spacer()
+                // REMOVED: Text(customTitle ?? category.displayName)
+                Spacer() // Pushes the icon to the leading edge and button to the trailing
                 Button(action: {
                     onAddTapped(category)
                 }) {
@@ -39,7 +36,7 @@ struct CategoryCardView: View {
                         .clipShape(Circle())
                 }
             }
-            .padding(.bottom, 5)
+            .padding(.bottom, 0) // Adjusted padding as the category name is removed
 
             if specialDays.isEmpty {
                 Text("No special days yet.")
@@ -79,7 +76,7 @@ struct CategoryCardView: View {
             Spacer()
         }
         .padding(20)
-        .frame(height: 200) // UPDATED: Increased height to accommodate "X more..." text
+        .frame(height: 200) // Keeping the adjusted height from before
         .frame(maxWidth: .infinity)
         .background(category.color.gradient)
         .cornerRadius(25)

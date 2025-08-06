@@ -14,7 +14,7 @@ struct AddSpecialDayView: View {
     // Initial category if adding from a specific category card
     let initialCategory: SpecialDayCategory?
     // NEW: Property to hold the theme color for the background
-    let themeColor: Color
+    let themeColor: Color // This was previously removed, but is needed for the background color consistency.
 
     @State private var name: String = ""
     @State private var date: Date = Date()
@@ -28,6 +28,12 @@ struct AddSpecialDayView: View {
         self.initialCategory = initialCategory
         // NEW: Initialize themeColor based on initialCategory or default to .other
         self.themeColor = initialCategory?.color ?? SpecialDayCategory.other.color
+    }
+
+    // Computed property to check if all required fields are filled
+    private var isSaveButtonDisabled: Bool {
+        name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ||
+        forWhom.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
     }
 
     var body: some View {
@@ -57,8 +63,7 @@ struct AddSpecialDayView: View {
                         .lineLimit(3, reservesSpace: true)
                 }
             }
-            // UPDATED: Use the themeColor with opacity for the background
-            .background(themeColor.opacity(0.1))
+            .background(themeColor.opacity(0.1)) // UPDATED: Use themeColor for background
             .scrollContentBackground(.hidden) // Hide default list background
             .navigationTitle("Add Special Day")
             .navigationBarTitleDisplayMode(.inline)
@@ -76,6 +81,7 @@ struct AddSpecialDayView: View {
                         dismiss()
                     }
                     .foregroundColor(.black)
+                    .disabled(isSaveButtonDisabled) // NEW: Disable button if required fields are empty
                 }
             }
         }
