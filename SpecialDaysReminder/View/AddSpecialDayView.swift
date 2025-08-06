@@ -51,8 +51,14 @@ struct AddSpecialDayView: View {
                     
                     Picker("Category", selection: $category) {
                         ForEach(SpecialDayCategory.allCases, id: \.self) { cat in
-                            Text(cat.displayName).tag(cat)
-                                .foregroundColor(.black) // Text inside picker rows
+                            // UPDATED: Show icon and display name in the picker
+                            HStack {
+                                Image(systemName: cat.iconName)
+                                    .foregroundColor(.black)
+                                Text(cat.displayName)
+                                    .foregroundColor(.black)
+                            }
+                            .tag(cat)
                         }
                     }
                     .pickerStyle(.menu)
