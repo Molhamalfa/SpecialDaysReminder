@@ -68,6 +68,15 @@ struct CategoryCardView: View {
                             }
                         }
                     }
+                    // NEW: Show "X more..." if there are more than 2 events
+                    if specialDays.count > 2 {
+                        Text("(\(specialDays.count - 2) more...)")
+                            .font(.caption2) // Smaller font for the count
+                            .fontWeight(.medium)
+                            .foregroundColor(.white.opacity(0.9))
+                            .padding(.top, 4) // Small padding above the text
+                            .frame(maxWidth: .infinity, alignment: .trailing) // Align to the trailing edge
+                    }
                 }
             }
         }
